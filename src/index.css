@@ -1,0 +1,77 @@
+@font-face {
+  font-family: "Poppins-Regular";
+  src: url("./assets/fonts/Poppins-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: 2px;
+}
+
+@font-face {
+  font-family: "Poppins-Bold";
+  src: url("./assets/fonts/Poppins-Bold.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: 2px;
+}
+
+@font-face {
+  font-family: "Spartan";
+  src: url("./assets/fonts/Spartan-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: 2px;
+}
+
+@font-face {
+  font-family: "Spartan";
+  src: url("./assets/fonts/Spartan-SemiBold.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Spartan";
+  src: url("./assets/fonts/Spartan-Bold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+body {
+  margin: 0;
+  font-family: "Spartan", sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+}
+
+button:focus {
+  outline: none;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+h1 {
+  font-size: 50px;
+}
+
+h3 {
+  font-size: 40px;
+  font-weight: bolder;
+  margin-bottom: 10px;
+}
+
+h4 {
+  font-size: 28px;
+}
+
+p {
+  margin-top: 0px;
+  font-size: 22px;
+}
