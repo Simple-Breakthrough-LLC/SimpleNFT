@@ -155,6 +155,10 @@ const Container = styled.div`
   padding: 60px 80px 48px 80px;
   left: 10%;
   position: relative;
+
+  input {
+    box-sizing: border-box;
+  }
 `;
 
 const NftImage = styled.img`
@@ -323,7 +327,7 @@ const DeployButton = styled.button`
   align-self: self-end;
   bottom: 6px;
   position: relative;
-  &: hover {
+  &:hover {
     box-shadow: inset 0 0 100px 100px rgba(255, 255, 255, 0.3);
   }
 `;
