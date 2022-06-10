@@ -8,13 +8,21 @@ import {
 } from '@solana/spl-token';
 import {
 	createInitializeCandyMachineInstruction,
-	PROGRAM_ID as CANDY_MACHINE_PROGRAM_V2_ID
+	PROGRAM_ID as CANDY_MACHINE_PROGRAM_V2_ID,
+	createSetCollectionInstruction,
 } from '@metaplex-foundation/mpl-candy-machine';
+import {
+	createCreateMetadataAccountV2Instruction,
+	createCreateMasterEditionV3Instruction,
+} from '@metaplex-foundation/mpl-token-metadata';
 import {
 	CONFIG_ARRAY_START_V2,
 	CONFIG_LINE_SIZE_V2,
 } from './constants.js';
 const web3 = require('@solana/web3.js');
+
+// TODO get this from metaplex
+const TOKEN_METADATA_PROGRAM_ID = new web3.PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
 
 export const checkCandyData = (candyData) => {
 	if (!candyData.symbol)
@@ -89,13 +97,66 @@ export const createCandyMachineInstructions = async (connection, accounts, candy
 	];
 }
 
-export const setCollectionInstructions = async (connection, accounts) => {
-	const { payer, collectionMint } = accounts;
+export const getPDA = async (seeds, programId) => {
+	const pda = await web3.PublicKey.findProgramAddress(
+		seeds,
+		programId
+	);
+	return {
+		publicKey: pda[0],
+		bumpSeed: pda[1]
+	};
+}
+
+export const getMetadataPDA = async (collectionMint) => getPDA(
+	[
+		'metadata',
+		TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+		collectionMint.toBuffer()
+	],
+	TOKEN_METADATA_PROGRAM_ID
+);
+
+export const getMasterEditionPDA = async (collectionMint) => getPDA(
+	[
+		'metadata',
+		TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+		collectionMint.toBuffer(),
+		'edition'
+	],
+	TOKEN_METADATA_PROGRAM_ID
+);
+
+export const getCollectionPDA = async (candyMachine) => getPDA(
+	[
+		'collection',
+		candyMachine.toBuffer(),
+	],
+	CANDY_MACHINE_PROGRAM_V2_ID
+);
+
+export const getCollectionAuthorityRecordPDA = async (collectionMint, collectionAuthority) => getPDA(
+	[
+		'metadata',
+		TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+		collectionMint.toBuffer(),
+		'collection_authority',
+		collectionAuthority.toBuffer(),
+	],
+	TOKEN_METADATA_PROGRAM_ID
+);
+
+export const setCollectionInstructions = async (connection, accounts, candyData) => {
+	const { payer, collectionMint, candyMachine } = accounts;
 	const associatedTokenAccount = await getAssociatedTokenAddress(
 		collectionMint.publicKey,
 		payer
 	);
-	return [
+	const metadataPDA = await getMetadataPDA(collectionMint.publicKey);
+	const masterEdition = await getMasterEditionPDA(collectionMint.publicKey);
+	const collectionPDA = await getCollectionPDA(candyMachine.publicKey);
+	const collectionAuthorityRecordPDA = await getCollectionAuthorityRecordPDA(collectionMint.publicKey, collectionPDA.publicKey);
+	const instructions = [
 		web3.SystemProgram.createAccount({
 			fromPubkey: payer,
 			newAccountPubkey: collectionMint.publicKey,
@@ -124,8 +185,58 @@ export const setCollectionInstructions = async (connection, accounts) => {
 			[],
 			TOKEN_PROGRAM_ID,
 		),
-		// Token Metadata Program: Create Metadata Accounts v2 (collection metadata, collection mint, owner, owner, owner)
-		// Token Metadata Program: V3 Create Master Edition (collection master edition, collection mint, owner * 3, collection metadata)
-		// Candy Machine: Set Collection (candy machine, owner, collection PDA, owner, collection metadata, collection mint, collection master edition, collection authority record)
+		createCreateMetadataAccountV2Instruction(
+			{
+				metadata: metadataPDA.publicKey,
+				mint: collectionMint.publicKey,
+				mintAuthority: payer,
+				payer,
+				updateAuthority: payer,
+			},
+			{
+				createMetadataAccountArgsV2: {
+					data: {
+						collection: null, // TODO {verified, key}
+						creators: candyData.creators,
+						name: 'Collection NFT',
+						sellerFeeBasisPoints: candyData.sellerFeeBasisPoints,
+						symbol: candyData.symbol,
+						uri: '',
+						uses: null, // TODO {useMethod, remaining, total}
+					},
+					isMutable: true,
+				},
+			},
+		),
+		createCreateMasterEditionV3Instruction(
+			{
+				edition: masterEdition.publicKey,
+				mint: collectionMint.publicKey,
+				updateAuthority: payer,
+				mintAuthority: payer,
+				payer,
+				metadata: metadataPDA.publicKey,
+			},
+			{
+				createMasterEditionArgs: {
+					maxSupply: 0,
+				}
+			}
+		),
 	];
+	const setCollectionInstruction = createSetCollectionInstruction({
+		candyMachine: candyMachine.publicKey,
+		authority: payer,
+		collectionPda: collectionPDA.publicKey,
+		payer,
+		metadata: metadataPDA.publicKey,
+		mint: collectionMint.publicKey,
+		edition: masterEdition.publicKey,
+		collectionAuthorityRecord: collectionAuthorityRecordPDA.publicKey,
+		tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+	});
+	// set candy machine as writable, because metaplex gets it wrong
+	setCollectionInstruction.keys[0].isWritable = true;
+	instructions.push(setCollectionInstruction);
+	return instructions;
 }

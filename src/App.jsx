@@ -48,7 +48,7 @@ const Providers = ({ children }) => {
     return <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletDialogProvider>
-          <ModalsProvider>{children}</ModalsProvider>;
+          <ModalsProvider>{children}</ModalsProvider>
         </WalletDialogProvider>
       </WalletProvider>
     </ConnectionProvider>
