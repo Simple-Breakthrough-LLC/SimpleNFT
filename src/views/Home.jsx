@@ -1,6 +1,7 @@
 import Axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
-import {useWallet } from '@solana/wallet-adapter-react';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { createCandyMachine } from '../web3/utils.js';
 import styled from "styled-components";
 
 import { ViewContract } from "./ViewContract";
@@ -8,6 +9,7 @@ import { ViewContract } from "./ViewContract";
 import uploadImg from "../assets/UploadImage.svg";
 
 export const Home = () => {
+  const { connection } = useConnection();
   const wallet = useWallet();
   const [contract, setContract] = useState(null)
   // const [imageUrl, setImageUrl] = useState(uploadImg);
@@ -22,6 +24,23 @@ export const Home = () => {
     // royaltyRecipient: "",
     // percentage: 0,
   });
+
+  const create = async () => {
+    const candyMachine = await createCandyMachine(wallet, connection, {
+      symbol: "TEST",
+      hiddenSettings: {
+        name: "Test Token ",
+        uri: "https://example.com/",
+        hash: "80a7b27fb7c83f4178bbedc1e2a3a506",
+      },
+    });
+    if (candyMachine.err) {
+      alert(candyMachine.err);
+      return;
+    }
+    console.log('candy machine:', candyMachine.candyMachine.toBase58())
+    console.log('collection mint:', candyMachine.collectionMint.toBase58())
+  }
 
   // const loadImage = async (e) => {
   //   if (e.target.files.length) {

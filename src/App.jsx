@@ -9,7 +9,6 @@ import { WalletDialogProvider } from '@solana/wallet-adapter-material-ui';
 import BaseView from "./components/BaseView";
 import { Home } from "./views/Home";
 import { ViewContract } from "./views/ViewContract";
-import { CreateCandyMachine } from "./views/CreateCandyMachine.jsx";
 
 const App = () => {
   return (
@@ -22,9 +21,6 @@ const App = () => {
             </Route>
             <Route path="/view_contract" exact>
               <ViewContract />
-            </Route>
-            <Route path="/new" exact>
-              <CreateCandyMachine />
             </Route>
           </Switch>
         </Router>
