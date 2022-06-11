@@ -36,7 +36,7 @@ export const Home = () => {
   // };
 
   const findContracts = async() =>{
-    let data = await Axios.get("/contract/get/" + wallet.publicKey.toBase58())
+    let data = await Axios.get("/user/get/" + wallet.publicKey.toBase58())
     console.log(data.data)
     if (data.data.length)
       setContract(data.data[0]);
