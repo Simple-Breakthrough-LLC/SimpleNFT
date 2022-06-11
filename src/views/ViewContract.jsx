@@ -74,9 +74,8 @@ export const ViewContract = ({contract}) => {
 };
 
 const Container = styled.div`
-  background-color: #f9f9f9;
   display: flex;
-  overflow: hidden;
+  overflow-y: scroll;
   flex-direction: row;
   justify-content: space-evenly;
   padding-top: 60px;
@@ -91,7 +90,6 @@ const FlexColumn = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 50%;
 `;
 
 const FlexRow = styled.div`

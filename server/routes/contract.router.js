@@ -11,7 +11,6 @@ const ObjectID = require("mongoose").Types.ObjectId;
 router.get("/get/:id", async (req, res) => {
 	try {
 		const data = await Contract.find({_id: new ObjectID(req.params.id)}, {_id: 0, __v:0});
-		console.log("GOT DATA", data)
 		res.status(200).json(data);
 	} catch (err) {
 		console.log("Error fetching articles", err);
@@ -21,13 +20,14 @@ router.get("/get/:id", async (req, res) => {
 
 router.post("/new", async (req, res) => {
 	try {
-        const {formFields, addr, user} = req.body;
+        const {fields, user} = req.body;
 
-        if (!formFields || !addr || !user)
+		console.log("Got", req.body)
+        if (!fields  || !user)
             throw new Error("Missing parameter");
         
-        console.log("Got this", formFields, addr, user);
-        const newContract = new Contract({...formFields, addr: addr});
+        console.log("Got this", fields, user);
+        const newContract = new Contract({...fields});
         let savedContract = await newContract.save();
 
 		// Since users can only have 1 contract, assumes that if a new contract is being saved there is a new user
@@ -35,6 +35,29 @@ router.post("/new", async (req, res) => {
         let data = await newUser.save();
 		console.log(data);
 		res.status(200).send(data);
+	} catch (err) {
+		console.log("Error fetching articles", err);
+	}
+});
+
+
+router.post("/update", async (req, res) => {
+	try {
+
+		// Later , verify whoever is updating is the owner of the contract
+        const {fields, user, id} = req.body;
+
+        if (!fields|| !user)
+            throw new Error("Missing parameter");
+        
+        console.log("Got this", fields, id, user);
+        let result = await Contract.updateOne({_id : new ObjectID(id)},
+			{
+				$set: {...fields},
+			})
+		console.log("This happenned", result)
+		// Since users can only have 1 contract, assumes that if a new contract is being saved there is a new user
+		res.status(200).send(id);
 	} catch (err) {
 		console.log("Error fetching articles", err);
 	}

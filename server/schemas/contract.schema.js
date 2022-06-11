@@ -4,7 +4,6 @@ const Schema = mongoose.Schema
 const ContractSchema = new Schema({
     addr: {
         type: String,
-        required: true,
         unique: true
     },
     image: {

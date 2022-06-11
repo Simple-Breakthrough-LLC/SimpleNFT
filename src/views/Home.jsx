@@ -13,7 +13,7 @@ export const Home = () => {
   // const [imageUrl, setImageUrl] = useState(uploadImg);
   const [image, setImage] = useState(null);
   // const fileInput = useRef(null);
-  const [formFields, setFormFields] = useState({
+  const [fields, setFormFields] = useState({
     name: "",
     symbol: "",
     description: "",
@@ -43,13 +43,20 @@ export const Home = () => {
   }
 
   const Submit = async(e, name) => {
-    alert(`${name} was clicked`);
     // Await server image & data creation
-    // Create contract
-    // Send contract to server
-    // console.log("Here", formFields, wallet.publicKey.toBase58());
-    let res = await Axios.post("/contract/new", {formFields, addr: "0x042", user: wallet.publicKey.toBase58()});
-    console.log(res.data)
+    Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
+    .then((res) =>{
+      // Create contract
+      console.log("Created contract", res.data);
+      Axios.post("/contract/update", {fields: {addr: "0x84"}, user: wallet.publicKey.toBase58(), id: res.data.contract})
+      .then((res) =>
+      {
+        console.log("Updated contract", res.data)
+        setContract(res.data.id)
+      })
+
+    })
+  
   };
 
   useEffect(() =>
@@ -76,7 +83,7 @@ export const Home = () => {
                 <Input
                   type="text"
                   onChange={(e) =>
-                    setFormFields({ ...formFields, name: e.target.value })
+                    setFormFields({ ...fields, name: e.target.value })
                   }
                 />
               </NameInput>
@@ -85,7 +92,7 @@ export const Home = () => {
                 <Input
                   type="text"
                   onChange={(e) =>
-                    setFormFields({ ...formFields, symbol: e.target.value })
+                    setFormFields({ ...fields, symbol: e.target.value })
                   }
                 />
               </SymbolInput>
@@ -95,7 +102,7 @@ export const Home = () => {
                 <Input
                   type="text"
                   onChange={(e) =>
-                    setFormFields({ ...formFields, image: e.target.value })
+                    setFormFields({ ...fields, image: e.target.value })
                   }
                 />
               </PayoutRecipientInput>
@@ -103,7 +110,7 @@ export const Home = () => {
               <InputText>Description</InputText>
               <InputArea
                 onChange={(e) =>
-                  setFormFields({ ...formFields, description: e.target.value })
+                  setFormFields({ ...fields, description: e.target.value })
                 }
               />
             </DescriptionInput>
@@ -136,7 +143,7 @@ export const Home = () => {
               placeholder="0x7c90cde29F475C3d9687c981dBaC47D344CbDa6d"
               type="text"
               onChange={(e) =>
-                setFormFields({ ...formFields, saleRecipient: e.target.value })
+                setFormFields({ ...fields, saleRecipient: e.target.value })
               }
             />
           </PayoutRecipientInput>
@@ -148,7 +155,7 @@ export const Home = () => {
                 type="text"
                 onChange={(e) =>
                   setFormFields({
-                    ...formFields,
+                    ...fields,
                     royaltyRecipient: e.target.value,
                   })
                 }
@@ -167,7 +174,7 @@ export const Home = () => {
                 onChange={(e) => {
                   if (e.target.value >= 0 && e.target.value <= 100) {
                     setFormFields({
-                      ...formFields,
+                      ...fields,
                       percentage: e.target.value,
                     });
                   }
@@ -184,9 +191,8 @@ export const Home = () => {
   );
 };
 const Container = styled.div`
-  background-color: #f9f9f9;
   display: flex;
-  overflow: hidden;
+  overflow-y: scroll;
   flex-direction: row;
   justify-content: space-evenly;
   align-items: flex-start;
