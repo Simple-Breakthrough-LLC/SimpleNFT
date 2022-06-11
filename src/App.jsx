@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import ModalsProvider from "./contexts/Modals";
 
 import { clusterApiUrl } from '@solana/web3.js';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -48,7 +47,7 @@ const Providers = ({ children }) => {
     return <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletDialogProvider>
-          <ModalsProvider>{children}</ModalsProvider>;
+          {children}
         </WalletDialogProvider>
       </WalletProvider>
     </ConnectionProvider>

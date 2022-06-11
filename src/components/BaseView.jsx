@@ -1,10 +1,18 @@
 import React from "react";
 import styled from "styled-components";
 
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Connect } from "../views/Connect";
+
 export const BaseView = ({ children }) => {
+  const wallet = useWallet();
+  
   return (
         <Content>
-          {children}
+          {wallet.connected 
+          ? children
+          : <Connect/>
+          }
         </Content>
   );
 };
@@ -15,9 +23,8 @@ export default BaseView
 
 
 const Content = styled.div`
-  height: 100%;
+  height: 100vh;
   display:flex;
-  height: 100%;
   background-color: #f9f9f9;
   display: flex;
   overflow: hidden;

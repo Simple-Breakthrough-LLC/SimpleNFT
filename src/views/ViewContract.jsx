@@ -3,14 +3,15 @@ import styled from "styled-components";
 
 import { ReactComponent as CopyIcon } from "../assets/copy-solid.svg";
 
-export const ViewContract = () => {
+export const ViewContract = ({contract}) => {
   const [formFields, setFormFields] = useState({
     name: "testtest",
     symbol: "test",
     description: "some description here",
-    saleRecipient: "",
-    royaltyRecipient: "",
-    percentage: 0,
+    image:"",
+    // saleRecipient: "",
+    // royaltyRecipient: "",
+    // percentage: 0,
   });
 
   return (
@@ -26,20 +27,28 @@ export const ViewContract = () => {
           <FlexRow>
             <InputText>Token address</InputText>
             <Row>
-              <Text>0x7c90cde29F475C3d9687c981dBaC47D344CbDa6d</Text>
+              <Text>{contract.contract.addr}</Text>
               <CopyIcon style={{ height: "15px" }} />
             </Row>
+          </FlexRow>
+          <Divider />
+          <FlexRow>
+            <InputText>Desciption</InputText>
+            <Row>
+              <Text>{contract.contract.description}</Text>
+            </Row>
+            <img src={contract.contract.image}/>
           </FlexRow>
           <Divider />
           <FlexRow>
             <Row>
               <Item>
                 <InputText>Token name:</InputText>
-                <Text>{formFields.name}</Text>
+                <Text>{contract.contract.name}</Text>
               </Item>
               <Item>
                 <InputText>Token symbol:</InputText>
-                <Text>{formFields.symbol}</Text>
+                <Text>{contract.contract.symbol}</Text>
               </Item>
             </Row>
             <Item>
@@ -52,7 +61,7 @@ export const ViewContract = () => {
             <Item>
               <InputText>Token owner:</InputText>
               <Row>
-                <Text>0x7c90cde29F475C3d9687c981dBaC47D344CbDa6d</Text>
+                <Text>{contract.addr}</Text>
                 <CopyIcon style={{ height: "15px" }} />
               </Row>
             </Item>

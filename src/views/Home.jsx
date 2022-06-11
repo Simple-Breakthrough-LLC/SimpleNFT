@@ -1,37 +1,67 @@
-import React, { useState, useRef } from "react";
+import Axios from "axios";
+import React, { useState, useRef, useEffect } from "react";
+import {useWallet } from '@solana/wallet-adapter-react';
 import styled from "styled-components";
+
+import { ViewContract } from "./ViewContract";
 
 import uploadImg from "../assets/UploadImage.svg";
 
 export const Home = () => {
-  const [imageUrl, setImageUrl] = useState(uploadImg);
+  const wallet = useWallet();
+  const [contract, setContract] = useState(null)
+  // const [imageUrl, setImageUrl] = useState(uploadImg);
   const [image, setImage] = useState(null);
-  const fileInput = useRef(null);
+  // const fileInput = useRef(null);
   const [formFields, setFormFields] = useState({
     name: "",
     symbol: "",
     description: "",
-    saleRecipient: "",
-    royaltyRecipient: "",
-    percentage: 0,
+    image: ""
+    // saleRecipient: "",
+    // royaltyRecipient: "",
+    // percentage: 0,
   });
 
-  const loadImage = async (e) => {
-    if (e.target.files.length) {
-      try {
-        const url = URL.createObjectURL(e.target.files[0]);
-        setImageUrl(url);
-        setImage(e.target.files[0]);
-      } catch (err) {
-        console.log("error on file input", err);
-      }
-    }
+  // const loadImage = async (e) => {
+  //   if (e.target.files.length) {
+  //     try {
+  //       const url = URL.createObjectURL(e.target.files[0]);
+  //       setImageUrl(url);
+  //       setImage(e.target.files[0]);
+  //     } catch (err) {
+  //       console.log("error on file input", err);
+  //     }
+  //   }
+  // };
+
+  const findContracts = async() =>{
+    let data = await Axios.get("/contract/get/" + wallet.publicKey.toBase58())
+    console.log(data.data)
+    if (data.data.length)
+      setContract(data.data[0]);
+  }
+
+  const Submit = async(e, name) => {
+    alert(`${name} was clicked`);
+    // Await server image & data creation
+    // Create contract
+    // Send contract to server
+    // console.log("Here", formFields, wallet.publicKey.toBase58());
+    let res = await Axios.post("/contract/new", {formFields, addr: "0x042", user: wallet.publicKey.toBase58()});
+    console.log(res.data)
   };
 
-  const Submit = (e, name) => {
-    alert(`${name} was clicked`);
-  };
+  useEffect(() =>
+  {
+    console.log("Hi")
+    findContracts();
+  }, [])
+
+  if (contract)
+    return (<ViewContract contract={contract}/>)
   return (
+
     <Container>
       <FlexColumn>
         <Top>
@@ -60,6 +90,15 @@ export const Home = () => {
                 />
               </SymbolInput>
             </FlexRow>
+            <PayoutRecipientInput>
+                <InputText>Image</InputText>
+                <Input
+                  type="text"
+                  onChange={(e) =>
+                    setFormFields({ ...formFields, image: e.target.value })
+                  }
+                />
+              </PayoutRecipientInput>
             <DescriptionInput>
               <InputText>Description</InputText>
               <InputArea
@@ -68,7 +107,7 @@ export const Home = () => {
                 }
               />
             </DescriptionInput>
-            <ImageInput>
+            {/* <ImageInput>
               <InputText>Image</InputText>
               <WhiteFlexRow onClick={() => fileInput.current.click()}>
                 <NftImage src={imageUrl} />
@@ -82,10 +121,10 @@ export const Home = () => {
                 accept=".png, .jpeg, .svg, .gif"
                 required
               />
-            </ImageInput>
+            </ImageInput> */}
           </FlexColumn2>
         </Top>
-        <Bottom>
+        {/* <Bottom>
           <BottomTitle>
             <TitleText>Payout Settings</TitleText>
             <SubText>sub-text here</SubText>
@@ -136,7 +175,7 @@ export const Home = () => {
               />
             </PercentageInput>
           </FlexRow>
-        </Bottom>
+        </Bottom> */}
       </FlexColumn>
       <DeployButton onClick={(e) => Submit(e, "RedOrangeText")}>
         Deploy
