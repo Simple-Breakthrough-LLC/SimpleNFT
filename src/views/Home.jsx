@@ -25,21 +25,22 @@ export const Home = () => {
     // percentage: 0,
   });
 
-  const create = async () => {
+  const create = async (name, symbol, uri) => {
     const candyMachine = await createCandyMachine(wallet, connection, {
-      symbol: "TEST",
+      symbol: symbol,
       hiddenSettings: {
-        name: "Test Token ",
-        uri: "https://example.com/",
+        name: name,
+        uri: "/" + uri,
         hash: "80a7b27fb7c83f4178bbedc1e2a3a506",
       },
     });
     if (candyMachine.err) {
-      alert(candyMachine.err);
+      throw new Error(candyMachine.err)
       return;
     }
     console.log('candy machine:', candyMachine.candyMachine.toBase58())
     console.log('collection mint:', candyMachine.collectionMint.toBase58())
+    return candyMachine.candyMachine.toBase58();
   }
 
   // const loadImage = async (e) => {
@@ -63,18 +64,24 @@ export const Home = () => {
 
   const Submit = async(e, name) => {
     // Await server image & data creation
-    Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
-    .then((res) =>{
-      // Create contract
-      console.log("Created contract", res.data);
-      Axios.post("/contract/update", {fields: {addr: "0x84"}, user: wallet.publicKey.toBase58(), id: res.data.contract})
-      .then((res) =>
-      {
-        console.log("Updated contract", res.data)
-        setContract(res.data.id)
-      })
+    try {
 
-    })
+      Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
+      .then(async (res) =>{
+        let addr = await create(fields.name, fields.symbol, res.data.contract);
+        console.log("Created contract", res.data);
+        Axios.post("/contract/update", {fields: {addr}, user: wallet.publicKey.toBase58(), id: res.data.contract})
+        .then(async (res) =>
+        {
+          console.log("Updated contract", res.data)
+          findContracts();//TODO
+        })
+      })
+    }
+    catch(err)
+    {
+      console.log("This happenned", err)
+    }
   
   };
 

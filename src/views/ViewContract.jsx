@@ -14,6 +14,11 @@ export const ViewContract = ({contract}) => {
     // percentage: 0,
   });
 
+  const mint = async () =>
+  {
+
+  }
+
   return (
     <Container>
       <FlexColumn>
@@ -69,18 +74,43 @@ export const ViewContract = ({contract}) => {
           <Divider />
         </Mid>
       </FlexColumn>
+      <DeployButton onClick={mint}>MINT</DeployButton>
     </Container>
   );
 };
 
+const DeployButton = styled.button`
+  display: flex;
+  font-size: 16px;
+  font-family: Spartan;
+  font-weight: 700;
+  color: #ffffff;
+  width: 125px;
+  height: 18px;
+  background-color: #ed3723;
+  overflow: hidden;
+  border-radius: 10px;
+  padding: 17px 0px 15px 0px;
+  border-width: 0px;
+  box-sizing: content-box;
+  cursor: pointer;
+  justify-content: center;
+  align-self: self-end;
+  bottom: 6px;
+  position: relative;
+  &:hover {
+    box-shadow: inset 0 0 100px 100px rgba(255, 255, 255, 0.3);
+  }
+`;
 const Container = styled.div`
   display: flex;
   overflow-y: scroll;
   flex-direction: row;
-  justify-content: space-evenly;
+  justify-content: center;
   padding-top: 60px;
-  gap: 10px;
+  gap: 30px;
 
+  align-items: end
   input {
     box-sizing: border-box;
   }
