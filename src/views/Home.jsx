@@ -30,7 +30,7 @@ export const Home = () => {
       symbol: symbol,
       hiddenSettings: {
         name: name,
-        uri: "/" + uri,
+        uri: "http://localhost:5000/" + uri,
         hash: "80a7b27fb7c83f4178bbedc1e2a3a506",
       },
     });

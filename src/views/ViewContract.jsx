@@ -1,9 +1,16 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
+import { getCandyMachineState, mintOneToken, awaitTransactionSignatureConfirmation } from '../web3/metaplex/candy-machine.ts';
+import { DEFAULT_TIMEOUT } from '../web3/metaplex/connection.tsx';
 
 import { ReactComponent as CopyIcon } from "../assets/copy-solid.svg";
 
 export const ViewContract = ({contract}) => {
+  const { connection } = useConnection();
+  const wallet = useWallet();
+
   const [formFields, setFormFields] = useState({
     name: "testtest",
     symbol: "test",
@@ -13,10 +20,61 @@ export const ViewContract = ({contract}) => {
     // royaltyRecipient: "",
     // percentage: 0,
   });
+  const [candyMachine, setCandyMachine] = useState(null);
+
+  const loadCandy = async () => {
+    const candy = await getCandyMachineState(wallet, contract.contract.addr, connection);
+    candy.id = new PublicKey(candy.id);
+    setCandyMachine(candy);
+    console.log('Candy machine loaded:', candy);
+  }
+
+  useEffect(() => {
+    if (!candyMachine && contract.contract.addr)
+      loadCandy();
+  }, [candyMachine, contract])
 
   const mint = async () =>
   {
+    const mintResult = await mintOneToken(
+      candyMachine,
+      wallet.publicKey,
+      [],
+      [],
+      wallet,
+      undefined
+    );
+    if (!mintResult) {
+      alert("Mint failed! Please try again!");
+      return;
+    }
 
+    console.log('Waiting for confirmation...');
+    const status = await awaitTransactionSignatureConfirmation(
+      mintResult.mintTxId,
+      DEFAULT_TIMEOUT,
+      connection,
+      true,
+    );
+    if (!status) {
+      alert("Mint confirmation failed! Please try again!");
+      return;
+    }
+
+    console.log('Getting metadata account...');
+    const metadata = await connection.getAccountInfo(
+      mintResult.metadataKey,
+      'processed',
+    );
+    if (!metadata) {
+      alert("Mint likely failed! Anti-bot SOL 0.01 fee potentially charged! Check the explorer to confirm the mint failed and if so, make sure you are eligible to mint before trying again.");
+    }
+
+    alert("Success!");
+    console.log('mintResult', mintResult);
+    console.log('token', mintResult.mint.toBase58());
+    // TODO Error handling
+    window.open('https://explorer.solana.com/address/' + mintResult.mint.toBase58() + '/?cluster=devnet');
   }
 
   return (
@@ -74,7 +132,9 @@ export const ViewContract = ({contract}) => {
           <Divider />
         </Mid>
       </FlexColumn>
-      <DeployButton onClick={mint}>MINT</DeployButton>
+      { candyMachine
+        ? <DeployButton onClick={mint}>MINT</DeployButton>
+        : null}
     </Container>
   );
 };
