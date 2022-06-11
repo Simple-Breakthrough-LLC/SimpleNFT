@@ -10,6 +10,7 @@ import {
 	createInitializeCandyMachineInstruction,
 	PROGRAM_ID as CANDY_MACHINE_PROGRAM_V2_ID,
 	createSetCollectionInstruction,
+	createAddConfigLinesInstruction,
 } from '@metaplex-foundation/mpl-candy-machine';
 import {
 	createCreateMetadataAccountV2Instruction,
@@ -44,6 +45,8 @@ export const checkCandyData = (candyData) => {
 		if (candyData.hiddenSettings.hash.length != 32)
 			return {err: "Verification hash must be 32 bytes."}
 	}
+	if (candyData.sellerFeeBasisPoints >= 10000)
+		return {err: "Seller fee basis points must be less than 100%."}
 	if (!candyData.creators || candyData.creators.length == 0)
 		return {err: "Need at least one creator."}
 	for (const creator of candyData.creators) {
@@ -239,4 +242,107 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 	setCollectionInstruction.keys[0].isWritable = true;
 	instructions.push(setCollectionInstruction);
 	return instructions;
+}
+
+const uuidFromConfigPubkey = configAccount => configAccount.toBase58().slice(0, 6);
+
+export const sendAndConfirmInstructions = (
+	wallet,
+	connection,
+	instructions,
+	signers=[],
+	commitment='processed'
+) => new Promise(async (resolve, reject) => {
+	const transaction = new web3.Transaction();
+	transaction.add(...instructions);
+	const signature = await wallet.sendTransaction(
+		transaction,
+		connection,
+		{signers}
+	);
+	connection.onSignature(signature, (result, context) => {
+		if (result.err)
+			reject({signature, result, context});
+		else
+			resolve({signature, result, context});
+	}, commitment);
+})
+
+export const createCandyMachine = async (wallet, connection, candyData) => {
+	const payer = wallet.publicKey;
+	const candyMachine = web3.Keypair.generate();
+	const collectionMint = web3.Keypair.generate();
+	const metadataPDA = await getMetadataPDA(collectionMint.publicKey);
+	const masterEditionPDA = await getMasterEditionPDA(collectionMint.publicKey);
+	const collectionPDA = await getCollectionPDA(candyMachine.publicKey);
+	const collectionAuthorityRecordPDA = await getCollectionAuthorityRecordPDA(collectionMint.publicKey, collectionPDA.publicKey);
+
+	const defaultData = {
+		uuid: uuidFromConfigPubkey(candyMachine.publicKey),
+		price: 0,
+		//symbol,
+		sellerFeeBasisPoints: 0,
+		maxSupply: 1,
+		isMutable: true,
+		retainAuthority: true,
+		goLiveDate: 1640390400, // TODO can probably make this null? or zero?
+		endSettings: null,
+		creators: [
+			{
+				address: payer,
+				verified: true,
+				share: 100
+			}
+		],
+		hiddenSettings: null,
+		whitelistMintSettings: null,
+		itemsAvailable: 1,
+		gatekeeper: null,
+	};
+	for (const field in defaultData)
+		if (!(field in candyData))
+			candyData[field] = defaultData[field];
+	if (!('itemsAvailable' in candyData))
+		candyData.itemsAvailable = candyData.maxSupply;
+
+	const status = checkCandyData(candyData);
+	if (status.err)
+		return status;
+
+	const treasuryWallet = payer;
+	// TODO If payment is with a token, then either generate the treasury wallet, or demand from user
+
+	const initInstructions = await createCandyMachineInstructions(
+		connection,
+		{
+			payer,
+			candyMachine,
+			treasuryWallet,
+		},
+		candyData,
+	);
+	const collectionInstructions = await setCollectionInstructions(
+		connection,
+		{
+			payer,
+			collectionMint,
+			candyMachine,
+		},
+		candyData,
+	);
+
+	const firstTx = await sendAndConfirmInstructions(wallet, connection, initInstructions, [candyMachine]);
+	const secondTx = await sendAndConfirmInstructions(wallet, connection, collectionInstructions, [collectionMint]);
+
+	return {
+		payer,
+		candyMachine: candyMachine.publicKey,
+		collectionMint: collectionMint.publicKey,
+		collectionMetadata: metadataPDA.publicKey,
+		collectionMasterEdition: masterEditionPDA.publicKey,
+		collection: collectionPDA.publicKey,
+		collectionAuthorityRecord: collectionAuthorityRecordPDA.publicKey,
+		firstTx,
+		secondTx,
+	}
 }
