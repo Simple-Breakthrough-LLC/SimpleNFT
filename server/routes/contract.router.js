@@ -11,9 +11,12 @@ const ObjectID = require("mongoose").Types.ObjectId;
 router.get("/get/:id", async (req, res) => {
 	try {
 		const data = await Contract.find({_id: new ObjectID(req.params.id)}, {_id: 0, __v:0});
-		res.status(200).json(data);
+		if (data.length == 0)
+			res.sendStatus(404);
+		res.status(200).json(data[0]);
 	} catch (err) {
 		console.log("Error fetching articles", err);
+		res.sendStatus(404);
 	}
 });
 
