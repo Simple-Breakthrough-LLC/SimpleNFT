@@ -4,7 +4,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { createCandyMachine } from '../web3/utils.js';
 import styled from "styled-components";
 
-import { ViewContract } from "./ViewContract";
+import { ViewContract } from "./ViewDAO";
 
 import uploadImg from "../assets/UploadImage.svg";
 
@@ -18,29 +18,25 @@ export const Home = () => {
   const [fields, setFormFields] = useState({
     name: "",
     symbol: "",
-    description: "",
-    image: ""
-    // saleRecipient: "",
-    // royaltyRecipient: "",
-    // percentage: 0,
+    amount: 0
   });
 
   const create = async (name, symbol, uri) => {
-    const candyMachine = await createCandyMachine(wallet, connection, {
-      symbol: symbol,
-      hiddenSettings: {
-        name: name,
-        uri: "/" + uri,
-        hash: "80a7b27fb7c83f4178bbedc1e2a3a506",
-      },
-    });
-    if (candyMachine.err) {
-      throw new Error(candyMachine.err)
-      return;
-    }
-    console.log('candy machine:', candyMachine.candyMachine.toBase58())
-    console.log('collection mint:', candyMachine.collectionMint.toBase58())
-    return candyMachine.candyMachine.toBase58();
+    // const candyMachine = await createCandyMachine(wallet, connection, {
+    //   symbol: symbol,
+    //   hiddenSettings: {
+    //     name: name,
+    //     uri: "/" + uri,
+    //     hash: "80a7b27fb7c83f4178bbedc1e2a3a506",
+    //   },
+    // });
+    // if (candyMachine.err) {
+    //   throw new Error(candyMachine.err)
+    //   return;
+    // }
+    // console.log('candy machine:', candyMachine.candyMachine.toBase58())
+    // console.log('collection mint:', candyMachine.collectionMint.toBase58())
+    // return candyMachine.candyMachine.toBase58();
   }
 
   // const loadImage = async (e) => {
@@ -55,55 +51,54 @@ export const Home = () => {
   //   }
   // };
 
-  const findContracts = async() =>{
-    let data = await Axios.get("/user/get/" + wallet.publicKey.toBase58())
-    console.log(data.data)
-    if (data.data.length)
-      setContract(data.data[0]);
-  }
+  // const findContracts = async() =>{
+  //   let data = await Axios.get("/user/get/" + wallet.publicKey.toBase58())
+  //   console.log(data.data)
+  //   if (data.data.length)
+  //     setContract(data.data[0]);
+  // }
 
   const Submit = async(e, name) => {
     // Await server image & data creation
-    try {
+    console.log("Submitted")
+    // try {
 
-      Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
-      .then(async (res) =>{
-        let addr = await create(fields.name, fields.symbol, res.data.contract);
-        console.log("Created contract", res.data);
-        Axios.post("/contract/update", {fields: {addr}, user: wallet.publicKey.toBase58(), id: res.data.contract})
-        .then(async (res) =>
-        {
-          console.log("Updated contract", res.data)
-          findContracts();//TODO
-        })
-      })
-    }
-    catch(err)
-    {
-      console.log("This happenned", err)
-    }
+    //   Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
+    //   .then(async (res) =>{
+    //     let addr = await create(fields.name, fields.symbol, res.data.contract);
+    //     console.log("Created contract", res.data);
+    //     Axios.post("/contract/update", {fields: {addr}, user: wallet.publicKey.toBase58(), id: res.data.contract})
+    //     .then(async (res) =>
+    //     {
+    //       console.log("Updated contract", res.data)
+    //       findContracts();//TODO
+    //     })
+    //   })
+    // }
+    // catch(err)
+    // {
+    //   console.log("This happenned", err)
+    // }
   
   };
 
-  useEffect(() =>
-  {
-    console.log("Hi")
-    findContracts();
-  }, [])
+  // useEffect(() =>
+  // {
+  //   console.log("Hi")
+  //   findContracts();
+  // }, [])
 
-  if (contract)
-    return (<ViewContract contract={contract}/>)
+  // if (contract)
+  //   return (<ViewContract contract={contract}/>)
   return (
 
     <Container>
       <FlexColumn>
         <Top>
           <Title>
-            <TitleText>General </TitleText>
-            <SubText>sub-text here</SubText>
+            <TitleText>NEW DAO </TitleText>
           </Title>
           <FlexColumn2>
-            <FlexRow>
               <NameInput>
                 <InputText>Name</InputText>
                 <Input
@@ -122,97 +117,30 @@ export const Home = () => {
                   }
                 />
               </SymbolInput>
-            </FlexRow>
-            <PayoutRecipientInput>
-                <InputText>Image</InputText>
+            <TokenAmount>
+                <InputText>Token Amount</InputText>
                 <Input
-                  type="text"
-                  onChange={(e) =>
-                    setFormFields({ ...fields, image: e.target.value })
-                  }
+                  type="number"
+                  max={100}
+                  min={0}
+                  value={fields.amount}
+                  onChange={(e) => {
+                    if (e.target.value >= 0 && e.target.value <= 100) {
+                      setFormFields({
+                        ...fields,
+                        amount: e.target.value,
+                      });
+                    }
+                  }}
                 />
-              </PayoutRecipientInput>
-            <DescriptionInput>
-              <InputText>Description</InputText>
-              <InputArea
-                onChange={(e) =>
-                  setFormFields({ ...fields, description: e.target.value })
-                }
-              />
-            </DescriptionInput>
-            {/* <ImageInput>
-              <InputText>Image</InputText>
-              <WhiteFlexRow onClick={() => fileInput.current.click()}>
-                <NftImage src={imageUrl} />
-              </WhiteFlexRow>
-              <input
-                type="file"
-                name="image"
-                onChange={(e) => loadImage(e)}
-                ref={fileInput}
-                style={{ display: `none` }}
-                accept=".png, .jpeg, .svg, .gif"
-                required
-              />
-            </ImageInput> */}
+              </TokenAmount>
           </FlexColumn2>
         </Top>
-        {/* <Bottom>
-          <BottomTitle>
-            <TitleText>Payout Settings</TitleText>
-            <SubText>sub-text here</SubText>
-          </BottomTitle>
-          <SubTitle>Primary Sales</SubTitle>
-          <PayoutRecipientInput>
-            <InputText>Recipient Address</InputText>
-            <Input
-              placeholder="0x7c90cde29F475C3d9687c981dBaC47D344CbDa6d"
-              type="text"
-              onChange={(e) =>
-                setFormFields({ ...fields, saleRecipient: e.target.value })
-              }
-            />
-          </PayoutRecipientInput>
-          <SubTitle>Royalties</SubTitle>
-          <FlexRow>
-            <RoyaltiesRecipientInput>
-              <InputText>Recipient Address</InputText>
-              <Input
-                type="text"
-                onChange={(e) =>
-                  setFormFields({
-                    ...fields,
-                    royaltyRecipient: e.target.value,
-                  })
-                }
-              />
-            </RoyaltiesRecipientInput>
-            <PercentageInput>
-              <SeparateRow>
-                <InputText>Percentage</InputText>
-                <PercentageText>%</PercentageText>
-              </SeparateRow>
-              <Input
-                type="number"
-                max={100}
-                min={0}
-                value={formFields.percentage}
-                onChange={(e) => {
-                  if (e.target.value >= 0 && e.target.value <= 100) {
-                    setFormFields({
-                      ...fields,
-                      percentage: e.target.value,
-                    });
-                  }
-                }}
-              />
-            </PercentageInput>
-          </FlexRow>
-        </Bottom> */}
-      </FlexColumn>
+
       <DeployButton onClick={(e) => Submit(e, "RedOrangeText")}>
         Deploy
       </DeployButton>
+      </FlexColumn>
     </Container>
   );
 };
@@ -220,40 +148,20 @@ const Container = styled.div`
   display: flex;
   overflow-y: scroll;
   flex-direction: row;
-  justify-content: space-evenly;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   gap: 10px;
-  padding: 60px 80px 48px 80px;
-  left: 10%;
   position: relative;
-
   input {
     box-sizing: border-box;
   }
-`;
-
-const NftImage = styled.img`
-  display: flex;
-  max-height: 300px;
-`;
-
-const PercentageText = styled.div`
-  font-size: 14px;
-  font-family: Spartan;
-  font-weight: 500;
-`;
-
-const SeparateRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
 `;
 
 const Top = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
 `;
 const TitleText = styled.div`
   font-size: 24px;
@@ -261,37 +169,16 @@ const TitleText = styled.div`
   font-weight: 700;
   color: #06005b;
 `;
-const SubText = styled.div`
-  font-size: 14px;
-  font-family: Spartan;
-  font-weight: 500;
-`;
 const FlexColumn2 = styled.div`
   display: flex;
   align-self: center;
   flex-direction: column;
   gap: 16px;
-  justify-content: space-between;
-  align-items: center;
-`;
-const FlexRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  gap: 40px;
   justify-content: center;
   align-items: center;
-  width: 100%;
 `;
+
 const NameInput = styled.div`
-  width: 70%;
-  display: flex;
-  height: 74px;
-  position: relative;
-  justify-content: flex-start;
-  flex-direction: column;
-`;
-
-const PayoutRecipientInput = styled.div`
   width: 100%;
   display: flex;
   height: 74px;
@@ -300,17 +187,8 @@ const PayoutRecipientInput = styled.div`
   flex-direction: column;
 `;
 
-const RoyaltiesRecipientInput = styled.div`
-  width: 70%;
-  display: flex;
-  height: 74px;
-  position: relative;
-  justify-content: flex-start;
-  flex-direction: column;
-`;
-
-const PercentageInput = styled.div`
-  width: 30%;
+const TokenAmount = styled.div`
+  width: 46%;
   display: flex;
   height: 74px;
   position: relative;
@@ -319,46 +197,14 @@ const PercentageInput = styled.div`
 `;
 
 const SymbolInput = styled.div`
-  width: 30%;
+  width: 42%;
   display: flex;
   height: 74px;
   position: relative;
   justify-content: flex-start;
   flex-direction: column;
 `;
-const DescriptionInput = styled.div`
-  width: 100%;
-  height: 111px;
-  position: relative;
-`;
 
-const ImageInput = styled.div`
-  width: 100%;
-  position: relative;
-`;
-const WhiteFlexRow = styled.div`
-  border-width: 1px;
-  border-color: #aaaaaa;
-  border-style: solid;
-  width: 100%;
-  background-color: #ffffff;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  border-radius: 10px;
-  padding: 15px 0px;
-  // background-image: url(${uploadImg})
-`;
-
-const Bottom = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  gap: 15px;
-  width: 100%;
-`;
 const Title = styled.div`
   display: flex;
   align-self: flex-start;
@@ -369,15 +215,6 @@ const Title = styled.div`
   margin: 0px 0px 48px 0px;
 `;
 
-const BottomTitle = styled.div`
-  display: flex;
-  align-self: flex-start;
-  flex-direction: column;
-  gap: 16px;
-  justify-content: center;
-  align-items: flex-start;
-  margin: 0px 0px 33px 0px;
-`;
 
 const DeployButton = styled.button`
   display: flex;
@@ -406,8 +243,11 @@ const FlexColumn = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  gap: 64px;
+  align-items: center;
+  gap: 55px;
+  padding: 30px 60px;
+  border: 1px solid grey;
+  border-radius: 10px;
 `;
 const InputText = styled.div`
   font-size: 14px;
@@ -424,22 +264,4 @@ const Input = styled.input`
   width: 100%;
   padding-left: 10px;
   font-size: 17px;
-`;
-
-const InputArea = styled.textarea`
-  border: 1px solid #aaaaaa;
-  height: 48px;
-  background-color: #ffffff;
-  border-radius: 10px;
-  width: 100%;
-  padding-left: 10px;
-  font-size: 17px;
-  width: 618px;
-  height: 85px;
-`;
-const SubTitle = styled.div`
-  font-size: 16px;
-  font-family: Spartan;
-  font-weight: 700;
-  color: #06005b;
 `;

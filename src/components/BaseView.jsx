@@ -23,7 +23,6 @@ export default BaseView
 
 
 const Content = styled.div`
-  height: 100vh;
   display:flex;
   background-color: #f9f9f9;
   display: flex;
