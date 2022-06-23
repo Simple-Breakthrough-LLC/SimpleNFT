@@ -75,10 +75,15 @@ export const candyAccountSize = (itemsAvailable) => {
 	);
 }
 
+/**
+ * Create the instructions required to create a candy machine.
+ * @returns {[web3.TransactionInstruction]}
+ */
 export const createCandyMachineInstructions = async (connection, accounts, candyData) => {
 	const { payer, candyMachine, treasuryWallet } = accounts;
 	const candyMachineSize = candyAccountSize(candyData.itemsAvailable);
 	return [
+		// Create the candy machine account.
 		web3.SystemProgram.createAccount({
 			fromPubkey: payer,
 			newAccountPubkey: candyMachine.publicKey,
@@ -86,6 +91,7 @@ export const createCandyMachineInstructions = async (connection, accounts, candy
 			lamports: await connection.getMinimumBalanceForRentExemption(candyMachineSize),
 			programId: CANDY_MACHINE_PROGRAM_V2_ID,
 		}),
+		// Initialize the candy machine account with the config provided.
 		createInitializeCandyMachineInstruction(
 			{
 				candyMachine: candyMachine.publicKey,
@@ -149,6 +155,12 @@ export const getCollectionAuthorityRecordPDA = async (collectionMint, collection
 	TOKEN_METADATA_PROGRAM_ID
 );
 
+/**
+ * Create the instructions required to set the candy machine collection, so
+ * that all NFTs generated with the candy machine will belong to that
+ * collection.
+ * @returns {[web3.TransactionInstruction]}
+ */
 export const setCollectionInstructions = async (connection, accounts, candyData) => {
 	const { payer, collectionMint, candyMachine } = accounts;
 	const associatedTokenAccount = await getAssociatedTokenAddress(
@@ -160,6 +172,7 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 	const collectionPDA = await getCollectionPDA(candyMachine.publicKey);
 	const collectionAuthorityRecordPDA = await getCollectionAuthorityRecordPDA(collectionMint.publicKey, collectionPDA.publicKey);
 	const instructions = [
+		// Create the collection mint account.
 		web3.SystemProgram.createAccount({
 			fromPubkey: payer,
 			newAccountPubkey: collectionMint.publicKey,
@@ -167,6 +180,7 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 			lamports: await connection.getMinimumBalanceForRentExemption(MintLayout.span),
 			programId: TOKEN_PROGRAM_ID,
 		}),
+		// Initialize the collection mint with 0 decimals to make it an NFT.
 		createInitializeMintInstruction(
 			collectionMint.publicKey,
 			0,
@@ -174,12 +188,14 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 			payer,
 			TOKEN_PROGRAM_ID,
 		),
+		// Create an associated token account to hold the NFT.
 		createAssociatedTokenAccountInstruction(
 			payer,
 			associatedTokenAccount,
 			payer,
 			collectionMint.publicKey,
 		),
+		// Mint the NFT to the associated token account.
 		createMintToInstruction(
 			collectionMint.publicKey,
 			associatedTokenAccount,
@@ -188,6 +204,7 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 			[],
 			TOKEN_PROGRAM_ID,
 		),
+		// Create a metadata account.
 		createCreateMetadataAccountV2Instruction(
 			{
 				metadata: metadataPDA.publicKey,
@@ -211,6 +228,7 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 				},
 			},
 		),
+		// Create a master edition.
 		createCreateMasterEditionV3Instruction(
 			{
 				edition: masterEdition.publicKey,
@@ -227,6 +245,7 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 			}
 		),
 	];
+	// Set the collection in the candy machine.
 	const setCollectionInstruction = createSetCollectionInstruction({
 		candyMachine: candyMachine.publicKey,
 		authority: payer,
@@ -246,6 +265,16 @@ export const setCollectionInstructions = async (connection, accounts, candyData)
 
 const uuidFromConfigPubkey = configAccount => configAccount.toBase58().slice(0, 6);
 
+/**
+ * Send an array of instructions as a single transaction, and wait for
+ * confirmation.
+ * @param wallet Wallet obtained from @solana/wallet-adapter-react
+ * @param connection Connection obtained from @solana/wallet-adapter-react
+ * @param {[web3.TransactionInstruction]} instructions
+ * @param {[web3.Keypair]} signers Any additional signers besides the wallet.
+ * @param commitment "finalized" | "confirmed" | "processed"
+ * @returns Promise that resolves or rejects with {signature, result, context}.
+ */
 export const sendAndConfirmInstructions = (
 	wallet,
 	connection,
@@ -268,7 +297,15 @@ export const sendAndConfirmInstructions = (
 	}, commitment);
 })
 
+/**
+ * Creates and sends the transactions necessary for creating a candy machine
+ * based on user specifications. Realistically this function should be
+ * implemented on the page itself, in order to handle the possibility of
+ * failure after the first transaction but before the second.
+ * @returns A dictionary containing the generated accounts and transactions.
+ */
 export const createCandyMachine = async (wallet, connection, candyData) => {
+	// Initialize necessary account public keys
 	const payer = wallet.publicKey;
 	const candyMachine = web3.Keypair.generate();
 	const collectionMint = web3.Keypair.generate();
@@ -277,6 +314,7 @@ export const createCandyMachine = async (wallet, connection, candyData) => {
 	const collectionPDA = await getCollectionPDA(candyMachine.publicKey);
 	const collectionAuthorityRecordPDA = await getCollectionAuthorityRecordPDA(collectionMint.publicKey, collectionPDA.publicKey);
 
+	// Complete any missing fields in the candy machine config
 	const defaultData = {
 		uuid: uuidFromConfigPubkey(candyMachine.publicKey),
 		price: 0,
@@ -312,6 +350,7 @@ export const createCandyMachine = async (wallet, connection, candyData) => {
 	const treasuryWallet = payer;
 	// TODO If payment is with a token, then either generate the treasury wallet, or demand from user
 
+	// Create instruction arrays for the two transactions.
 	const initInstructions = await createCandyMachineInstructions(
 		connection,
 		{
@@ -331,6 +370,7 @@ export const createCandyMachine = async (wallet, connection, candyData) => {
 		candyData,
 	);
 
+	// Send transactions
 	const firstTx = await sendAndConfirmInstructions(wallet, connection, initInstructions, [candyMachine]);
 	const secondTx = await sendAndConfirmInstructions(wallet, connection, collectionInstructions, [collectionMint]);
 
