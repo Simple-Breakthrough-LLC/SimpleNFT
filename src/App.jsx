@@ -19,7 +19,7 @@ const App = () => {
             <Route path="/" exact>
               <Home />
             </Route>
-            <Route path="/dao" exact>
+            <Route path="/dao/addr:" exact>
               <ViewDAO />
             </Route>
           </Switch>

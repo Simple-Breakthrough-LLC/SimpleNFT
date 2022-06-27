@@ -39,57 +39,29 @@ export const Home = () => {
     // return candyMachine.candyMachine.toBase58();
   }
 
-  // const loadImage = async (e) => {
-  //   if (e.target.files.length) {
-  //     try {
-  //       const url = URL.createObjectURL(e.target.files[0]);
-  //       setImageUrl(url);
-  //       setImage(e.target.files[0]);
-  //     } catch (err) {
-  //       console.log("error on file input", err);
-  //     }
-  //   }
-  // };
-
-  // const findContracts = async() =>{
-  //   let data = await Axios.get("/user/get/" + wallet.publicKey.toBase58())
-  //   console.log(data.data)
-  //   if (data.data.length)
-  //     setContract(data.data[0]);
-  // }
-
   const Submit = async(e, name) => {
-    // Await server image & data creation
     console.log("Submitted")
-    // try {
-
-    //   Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
-    //   .then(async (res) =>{
-    //     let addr = await create(fields.name, fields.symbol, res.data.contract);
-    //     console.log("Created contract", res.data);
-    //     Axios.post("/contract/update", {fields: {addr}, user: wallet.publicKey.toBase58(), id: res.data.contract})
-    //     .then(async (res) =>
-    //     {
-    //       console.log("Updated contract", res.data)
-    //       findContracts();//TODO
-    //     })
-    //   })
-    // }
-    // catch(err)
-    // {
-    //   console.log("This happenned", err)
-    // }
+    try {
+      // Unsafe, would need to get signature & check it 
+      Axios.post("/dao/new", {fields})
+      .then(async (res) =>{
+        let addr = await create(fields.name, fields.symbol, res.data.contract);
+        console.log("Created contract", res.data);
+        Axios.post("/dao/update", {fields: {addr}, id: res.data.contract})
+        .then(async (res) =>
+        {
+          console.log("Updated contract", res.data)
+          findContracts();//TODO
+        })
+      })
+    }
+    catch(err)
+    {
+      console.log("This happenned", err)
+    }
   
   };
 
-  // useEffect(() =>
-  // {
-  //   console.log("Hi")
-  //   findContracts();
-  // }, [])
-
-  // if (contract)
-  //   return (<ViewContract contract={contract}/>)
   return (
 
     <Container>

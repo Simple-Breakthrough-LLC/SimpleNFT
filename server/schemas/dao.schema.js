@@ -1,18 +1,10 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const ContractSchema = new Schema({
+const DAOSchema = new Schema({
     addr: {
         type: String,
         unique: true
-    },
-    image: {
-        type: String,
-        required: true
-    },
-    description: {
-        type: String,
-        required: true
     },
     name: {
         type: String,
@@ -21,7 +13,11 @@ const ContractSchema = new Schema({
     symbol: {
         type: String,
         required: true
+    },
+    proposals : {
+        type: Array,
+        default: []
     }
 })
 
-module.exports = Contract = mongoose.model('contract', ContractSchema)
+module.exports = DAO = mongoose.model('DAO', DAOSchema)
