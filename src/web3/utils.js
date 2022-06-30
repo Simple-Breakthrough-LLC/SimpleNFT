@@ -26,6 +26,7 @@ export const sendAndConfirmInstructions = (
 		connection,
 		{signers}
 	);
+	console.log('Transaction', signature);
 	connection.onSignature(signature, (result, context) => {
 		if (result.err)
 			reject({signature, result, context});
