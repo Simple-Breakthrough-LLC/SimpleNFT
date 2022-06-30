@@ -10,7 +10,7 @@ const path = require("path");
 
 const connectDB = require("./db");
 const sessionMiddleware = require("./middleware/session-middleware");
-const contractRouter = require("./routes/contract.router")
+const daoRouter = require("./routes/dao.router")
 const userRouter = require("./routes/user.router")
 
 const PORT = process.env.PORT || 5000;
@@ -38,7 +38,8 @@ app.use(cookieParser());
 app.use(bodyParser.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb'}));
 
-app.use("/contract", contractRouter);
+// app.use("/contract", contractRouter);
+app.use("/dao", daoRouter);
 app.use("/user", userRouter);
 
 app.get("/*", function (req, res) {

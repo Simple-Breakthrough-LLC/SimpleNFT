@@ -1,7 +1,7 @@
+import Axios from "axios";
 import React, { useState } from "react";
+import { useParams } from "react-router-dom";
 import styled from "styled-components";
-
-import { ReactComponent as CopyIcon } from "../assets/copy-solid.svg";
 
 const DummyDAO = {
   name: "BIRDAO",
@@ -42,16 +42,27 @@ const DummyDAO = {
   }
 }
 
-export const ViewDAO = ({contract}) => {
-  // const isHolder;
+export const ViewDAO = ({}) => {
+  const [DAO_Info, setDAO_Info] = useState(null)
+  const { addr } = useParams();
 
-  const [formFields, setFormFields] = useState({
-    name: "testtest",
-    symbol: "test",
-    // saleRecipient: "",
-    // royaltyRecipient: "",
-    // percentage: 0,
-  });
+  const fetchProposals = async() =>
+  {
+    // WEB3 to get proposals here
+      setDAO_Info({...DAO_Info, proposals: DummyDAO.proposals})
+  }
+
+  const getDAO_Info = async () =>
+  {
+    let info = await Axios.get("/dao/" + addr);
+    setDAO_Info(info.data);
+    await fetchProposals();
+  }
+
+  useState(() =>
+  {
+    getDAO_Info();
+  }, [])
 
   return (
     <Container>

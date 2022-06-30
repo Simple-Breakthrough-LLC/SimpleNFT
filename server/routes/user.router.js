@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const User = require("../schemas/user.schema");
-const Contract = require("../schemas/contract.schema");
+const Contract = require("../schemas/dao.schema");
 
 
 //For now get all articles, In future maybe /artciles/get?size=50?page=3 where size is page size and page is page number (this would fetch 50 articles  )
