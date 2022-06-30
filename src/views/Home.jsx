@@ -1,12 +1,14 @@
 import Axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { createCandyMachine } from '../web3/utils.js';
+import { createBasicDAOInstructions } from '../web3/governance';
 import styled from "styled-components";
 
 import { ViewContract } from "./ViewDAO";
 
-import uploadImg from "../assets/UploadImage.svg";
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { getPDA, sendAndConfirmInstructions } from '../web3/utils.js';
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const Home = () => {
   const { connection } = useConnection();
@@ -20,6 +22,21 @@ export const Home = () => {
     symbol: "",
     amount: 0
   });
+
+  const go = async () => {
+	const communityMint = new PublicKey('H2RUA71kY8HD5bttQHDST4LwiYPYmTEWgCQVeJRU1c6R');
+	const realm = Keypair.generate();
+	const instructions = await createBasicDAOInstructions(
+		connection,
+		{
+			payer: wallet.publicKey,
+			communityMint,
+			realm: realm.publicKey,
+		},
+		"A Name",
+	);
+	await sendAndConfirmInstructions(wallet, connection, instructions);
+  }
 
   const create = async (name, symbol, uri) => {
     // const candyMachine = await createCandyMachine(wallet, connection, {
@@ -98,6 +115,7 @@ export const Home = () => {
           <Title>
             <TitleText>NEW DAO </TitleText>
           </Title>
+		  <button onClick={go}>Go</button>
           <FlexColumn2>
               <NameInput>
                 <InputText>Name</InputText>
