@@ -1,7 +1,7 @@
 import Axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { createBasicDAOInstructions } from '../web3/governance';
+import { createBasicDAOInstructions, daoStep1 } from '../web3/governance';
 import styled from "styled-components";
 
 import { ViewContract } from "./ViewDAO";
@@ -23,40 +23,11 @@ export const Home = () => {
     amount: 0
   });
 
-  const go = async () => {
-	const communityMint = new PublicKey('H2RUA71kY8HD5bttQHDST4LwiYPYmTEWgCQVeJRU1c6R');
-	const realm = Keypair.generate();
-	const instructions = await createBasicDAOInstructions(
-		connection,
-		{
-			payer: wallet.publicKey,
-			communityMint,
-			realm: realm.publicKey,
-		},
-		"A Name",
-	);
-	await sendAndConfirmInstructions(wallet, connection, instructions);
-  }
-
-  const create = async (name, symbol, uri) => {
-    // const candyMachine = await createCandyMachine(wallet, connection, {
-    //   symbol: symbol,
-    //   hiddenSettings: {
-    //     name: name,
-    //     uri: "/" + uri,
-    //     hash: "80a7b27fb7c83f4178bbedc1e2a3a506",
-    //   },
-    // });
-    // if (candyMachine.err) {
-    //   throw new Error(candyMachine.err)
-    //   return;
-    // }
-    // console.log('candy machine:', candyMachine.candyMachine.toBase58())
-    // console.log('collection mint:', candyMachine.collectionMint.toBase58())
-    // return candyMachine.candyMachine.toBase58();
-  }
-
   const Submit = async(e, name) => {
+	// TODO Using Math.random as a name because I can't be bothered to type a unique one each time
+	const { realmPDA, tx } = await daoStep1(wallet, connection, "Name " + Math.random());
+	console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58())
+	/*
     console.log("Submitted")
     try {
       // Unsafe, would need to get signature & check it 
@@ -76,6 +47,7 @@ export const Home = () => {
     {
       console.log("This happenned", err)
     }
+	*/
   
   };
 
@@ -87,7 +59,6 @@ export const Home = () => {
           <Title>
             <TitleText>NEW DAO </TitleText>
           </Title>
-		  <button onClick={go}>Go</button>
           <FlexColumn2>
               <NameInput>
                 <InputText>Name</InputText>

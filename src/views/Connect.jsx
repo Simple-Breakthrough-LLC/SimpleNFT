@@ -8,6 +8,5 @@ export const Connect = () => {
     const { connection } = useConnection();
     const wallet = useWallet();
 
-
-   return <WalletDialogButton>Connect</WalletDialogButton>
+    return <WalletDialogButton>Connect</WalletDialogButton>
 }

@@ -2,6 +2,10 @@ import Axios from "axios";
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import styled from "styled-components";
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from "@solana/web3.js";
+
+import { getDAO } from "../web3/governance.ts";
 
 const DummyDAO = {
   name: "BIRDAO",
@@ -43,9 +47,13 @@ const DummyDAO = {
 }
 
 export const ViewDAO = ({}) => {
+  const { connection } = useConnection();
   const [DAO_Info, setDAO_Info] = useState(null)
   const { addr } = useParams();
 
+  getDAO(connection, new PublicKey(addr));
+
+  /*
   const fetchProposals = async() =>
   {
     // WEB3 to get proposals here
@@ -63,6 +71,7 @@ export const ViewDAO = ({}) => {
   {
     getDAO_Info();
   }, [])
+  */
 
   return (
     <Container>

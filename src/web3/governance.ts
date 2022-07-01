@@ -1,14 +1,24 @@
-import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
+import { AccountInfo, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { getPDA, sendAndConfirmInstructions } from './utils.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import BN from 'bn.js';
 import { serialize } from 'borsh';
 // We need to strategically avoid certain files in the spl governance library because of this issue:
 //   https://github.com/facebook/create-react-app/pull/12021
 import { getGovernanceSchema } from '@solana/spl-governance/lib/governance/serialisation';
-import { GovernanceConfig, MintMaxVoteWeightSource, RealmConfigArgs, VoteThresholdPercentage } from '@solana/spl-governance/lib/governance/accounts';
-import { CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateRealmArgs } from '@solana/spl-governance/lib/governance/instructions';
+import {
+	GovernanceConfig,
+	MintMaxVoteWeightSource,
+	RealmConfigArgs,
+	VoteThresholdPercentage,
+	GovernanceAccountType,
+	Realm,
+	Proposal,
+	VoteRecord
+} from '@solana/spl-governance/lib/governance/accounts';
+import { CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateRealmArgs, Vote } from '@solana/spl-governance/lib/governance/instructions';
 import { createMintInstructions, mintToInstructions } from './token.js';
+import { deserializeBorsh } from '@solana/spl-governance/lib/tools/borsh';
 
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 const GOVERNANCE_PROGRAM_ID = new PublicKey('GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw');
@@ -349,4 +359,61 @@ export const daoStep1 = async (wallet: any, connection: any, name: string) => {
 export const daoStep2 = async (wallet: any, connection: any) => {
 	const communityMint = Keypair.generate();
 	mintToInstructions(connection, wallet.publicKey, communityMint.publicKey, 12, new PublicKey('Aui657vkmeVDGX9GzE7j2B1RhZpbpQN6E9UeRCzqKvCd'));
+}
+
+const accountTypeFilter = (type : GovernanceAccountType) => {
+	return (account : any) => account.account.data[0] === type;
+}
+
+export const getDAO = async (connection: any, realm: PublicKey) => {
+	const GOVERNANCE_SCHEMA = getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION);
+	const info = await connection.getParsedAccountInfo(realm);
+	if (!info.value)
+		return null;
+	const realmData : Realm = deserializeBorsh(
+		GOVERNANCE_SCHEMA,
+		Realm,
+		Buffer.from(info.value.data),
+	);
+	const communityMint = realmData.communityMint;
+	const governanceAddress = (await getMintGovernancePDA(
+		realm,
+		communityMint,
+		GOVERNANCE_PROGRAM_ID
+	)).publicKey;
+
+	console.log('Fetching governance accounts...');
+	const governanceAccounts = await connection.getProgramAccounts(GOVERNANCE_PROGRAM_ID);
+	console.log('Searching', governanceAccounts.length, 'accounts...');
+	const proposalAccounts = governanceAccounts.filter(accountTypeFilter(GovernanceAccountType.ProposalV2));
+	const voteRecordAccounts = governanceAccounts.filter(accountTypeFilter(GovernanceAccountType.VoteRecordV2));
+	const proposals = [];
+	for (const account of proposalAccounts)
+	{
+		const proposalData : Proposal = deserializeBorsh(
+			GOVERNANCE_SCHEMA,
+			Proposal,
+			account.account.data
+		);
+		if (proposalData.governance.equals(governanceAddress))
+			proposals.push({ account, data: proposalData, votes: [] as any[] });
+	}
+	for (const account of voteRecordAccounts)
+	{
+		const voteRecordData : VoteRecord = deserializeBorsh(
+			GOVERNANCE_SCHEMA,
+			VoteRecord,
+			account.account.data
+		);
+		for (const proposal of proposals)
+			if (voteRecordData.proposal.equals(proposal.account.pubkey))
+				proposal.votes.push(voteRecordData);
+	}
+	console.log('Done searching. Found', proposals.length, 'proposals.');
+	return {
+		realmData,
+		communityMint,
+		governanceAddress,
+		proposals,
+	};
 }
