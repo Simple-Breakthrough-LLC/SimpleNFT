@@ -1,9 +1,9 @@
 import { AccountInfo, Keypair, PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { getPDA, sendAndConfirmInstructions } from './utils.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import BN from 'bn.js';
 import { serialize } from 'borsh';
-// We need to strategically avoid certain files in the spl governance library because of this issue:
+// We need to strategically avoid certain functions in the spl governance library because of this issue:
 //   https://github.com/facebook/create-react-app/pull/12021
 import { getGovernanceSchema } from '@solana/spl-governance/lib/governance/serialisation';
 import {
@@ -16,7 +16,7 @@ import {
 	Proposal,
 	VoteRecord
 } from '@solana/spl-governance/lib/governance/accounts';
-import { CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateRealmArgs, Vote } from '@solana/spl-governance/lib/governance/instructions';
+import { CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateRealmArgs } from '@solana/spl-governance/lib/governance/instructions';
 import { createMintInstructions, mintToInstructions } from './token.js';
 import { deserializeBorsh } from '@solana/spl-governance/lib/tools/borsh';
 
@@ -412,7 +412,7 @@ export const getDAO = async (connection: any, realm: PublicKey) => {
 	console.log('Done searching. Found', proposals.length, 'proposals.');
 	return {
 		realmData,
-		communityMint,
+		communityMint: await getMint(connection, realmData.communityMint),
 		governanceAddress,
 		proposals,
 	};

@@ -1,134 +1,131 @@
 import Axios from "axios";
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import styled from "styled-components";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey } from '@solana/web3.js';
 
-import { getDAO } from "../web3/governance.ts";
+import { getDAO } from '../web3/governance.ts';
+import { mintToInstructions, transferInstructions } from '../web3/token.js';
+import { sendAndConfirmInstructions } from '../web3/utils.js';
+// We need to strategically avoid certain functions in the spl governance library because of this issue:
+//   https://github.com/facebook/create-react-app/pull/12021
+import { ProposalState } from '@solana/spl-governance/lib/governance/accounts';
+import { VoteKind } from '@solana/spl-governance/lib/governance/instructions';
 
-const DummyDAO = {
-  name: "BIRDAO",
-  symbol: "OvO",
-  proposals : {
-    0 : {
-      title: "First proposal",
-      text:"BIRD DAO! BIRD DAO!BIRD DAO!vBIRD DAO!BIRD DAO!BIRD DAO!BIRD DAO!BIRD DAO!BIRD DAO! BIRD DAO! BIRD DAO! BIRD DAO! BIRD DAO!",
-      status : false,
-      voteTotal : 10,
-      voteCount : 10,
-      hasVoted : true
-    },
-    1 : {
-      title: "Second proposal",
-      text: "ThisIsAVeryLongTextNoOneWritesLikeTHisButYouNeverKnow,ThisSpansMultipleLinesHopefully:)",
-      status : true,
-      voteTotal : 1,
-      voteCount : 10,
-      hasVoted : true
-    },
-    2 : {
-      title: "Third proposal",
-      text: "Here is the third proposal, written like a normal person would",
-      status : true,
-      voteTotal : 7,
-      voteCount : 10,
-      hasVoted : true
-    },
-    3 : {
-      title: "Fourth proposal",
-      text: "AAAAAAAAAAAAAAAAAAAAAA THIS IS THE FOURHT ONE",
-      status : false,
-      voteTotal : 5,
-      voteCount : 10,
-      hasVoted : true
+export const ViewDAO = () => {
+    const { addr } = useParams();
+    const { connection } = useConnection();
+    const wallet = useWallet();
+    const [DAO, setDAO] = useState(null);
+    const [amount, setAmount] = useState(10);
+    const [recipient, setRecipient] = useState('Aui657vkmeVDGX9GzE7j2B1RhZpbpQN6E9UeRCzqKvCd');
+
+    const formatProposal = (proposal, communityMint) => {
+        let yesVotes = 0;
+        let noVotes = 0;
+        for (const vote of proposal.votes) {
+            if (vote.vote.voteType === VoteKind.Approve)
+                yesVotes += Number(vote.voterWeight);
+            else
+                noVotes += Number(vote.voterWeight);
+        }
+        return {
+            account: proposal.account.pubkey,
+            name: proposal.data.name,
+            description: proposal.data.descriptionLink,
+            state: proposal.data.state,
+            yesVotes,
+            noVotes,
+        }
     }
-  }
-}
 
-export const ViewDAO = ({}) => {
-  const { connection } = useConnection();
-  const [DAO_Info, setDAO_Info] = useState(null)
-  const { addr } = useParams();
+    const fetchDAO = async () => {
+        const dao = await getDAO(connection, new PublicKey(addr));
+        dao.proposals = dao.proposals.map(formatProposal);
+        setDAO(dao);
+    }
 
-  getDAO(connection, new PublicKey(addr));
+    const mint = async () => {
+        const instructions = await mintToInstructions(
+            connection,
+            wallet.publicKey,
+            DAO.realmData.communityMint,
+            Number(amount),
+            new PublicKey(recipient),
+        );
+        await sendAndConfirmInstructions(wallet, connection, instructions);
+    }
 
-  /*
-  const fetchProposals = async() =>
-  {
-    // WEB3 to get proposals here
-      setDAO_Info({...DAO_Info, proposals: DummyDAO.proposals})
-  }
+    const transfer = async () => {
+        const instructions = await transferInstructions(
+            connection,
+            wallet.publicKey,
+            DAO.realmData.communityMint,
+            Number(amount),
+            new PublicKey(recipient),
+        );
+        await sendAndConfirmInstructions(wallet, connection, instructions);
+    }
 
-  const getDAO_Info = async () =>
-  {
-    let info = await Axios.get("/dao/" + addr);
-    setDAO_Info(info.data);
-    await fetchProposals();
-  }
+    useEffect(() => {
+        if (!DAO)
+            fetchDAO();
+    }, [])
 
-  useState(() =>
-  {
-    getDAO_Info();
-  }, [])
-  */
+    if (!DAO)
+        return 'Loading...';
 
-  return (
-    <Container>
-      <DAOName>{DummyDAO.name} | {DummyDAO.symbol}</DAOName>
-      <TopRow>
-        <TopButton> Transfer tokens</TopButton>  
-        <TopButton> New Proposal </TopButton> 
-      </TopRow>
-      <RowName> Open </RowName>
-      <ProposalRow>
-          {Object.keys(DummyDAO.proposals).map((key, i) =>
-            DummyDAO.proposals[key].status &&
-            <ProposalCard key={i}>
-              <ProposalTitle> #{i} | {DummyDAO.proposals[key].title} </ProposalTitle>
-              <ProposalText numberOfLines={1}>{DummyDAO.proposals[key].text}</ProposalText>
-              <VoteCol>
-                <VoteTextRow>
-                  <VoteText>yes : {(DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount} %</VoteText>
-                  <VoteText>no : {100 - ((DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount)} %</VoteText>
-                </VoteTextRow>
-                <VoteBar 
-                  yes = {(DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount}
-                  no = {100 - ((DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount)}
-                />
-                <VoteRow>
-                  <VoteButton color="green">YES</VoteButton>
-                  <VoteButton color="red">NO</VoteButton>
-                </VoteRow>
-              </VoteCol>
-            </ProposalCard>
-            )
+    const openProposals = DAO.proposals.filter((proposal) => proposal.state === ProposalState.Voting);
+    const closedProposals = DAO.proposals.filter((proposal) => proposal.state !== ProposalState.Voting);
+
+    const proposalHTML = (proposal) => (
+      <ProposalCard key={proposal.account}>
+        <ProposalTitle> {proposal.name} </ProposalTitle>
+        <ProposalText numberOfLines={1}>{proposal.description}</ProposalText>
+        <VoteCol>
+          <VoteTextRow>
+            <VoteText>yes : {proposal.yesVotes / 10 ** DAO.communityMint.decimals}</VoteText>
+            <VoteText>no : {proposal.noVotes / 10 ** DAO.communityMint.decimals}</VoteText>
+          </VoteTextRow>
+          <VoteBar
+            yes = {(proposal.voteTotal * 100) / proposal.voteCount}
+            no = {100 - ((proposal.voteTotal * 100) / proposal.voteCount)}
+          />
+          {proposal.state == 'Voting'
+            ? <VoteRow>
+              <VoteButton color="green">YES</VoteButton>
+              <VoteButton color="red">NO</VoteButton>
+            </VoteRow>
+            : null
           }
-      </ProposalRow>
-      <Divider/>
-      <RowName> Closed </RowName>
-      <ProposalRow>
-          {Object.keys(DummyDAO.proposals).map((key, i) =>
-            !DummyDAO.proposals[key].status &&
-            <ProposalCard key={i}>
-              <ProposalTitle> #{i} | {DummyDAO.proposals[key].title} </ProposalTitle>
-              <ProposalText numberOfLines={1}>{DummyDAO.proposals[key].text}</ProposalText>
-              <VoteCol>
-                <VoteTextRow>
-                  <VoteText>yes : {(DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount} %</VoteText>
-                  <VoteText>no : {100 - ((DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount)} %</VoteText>
-                </VoteTextRow>
-                <VoteBar 
-                  yes = {(DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount}
-                  no = {100 - ((DummyDAO.proposals[key].voteTotal * 100) / DummyDAO.proposals[key].voteCount)}
-                />
-              </VoteCol>
-            </ProposalCard>
-            )
-          }
-      </ProposalRow>
-    </Container>
-  );
+        </VoteCol>
+      </ProposalCard>
+    );
+
+    return (
+      <Container>
+        <DAOName>{DAO.name}</DAOName>
+        <TopRow>
+          <TopButton> Transfer tokens</TopButton>
+          <TopButton> New Proposal </TopButton>
+        </TopRow>
+        <RowName> Open </RowName>
+        <ProposalRow>
+          {openProposals.map(proposalHTML)}
+        </ProposalRow>
+        <Divider/>
+        <RowName> Closed </RowName>
+        <ProposalRow>
+          {closedProposals.map(proposalHTML)}
+        </ProposalRow>
+        Transfer tokens:
+        Amount: 10
+        To: Aui657vkmeVDGX9GzE7j2B1RhZpbpQN6E9UeRCzqKvCd
+        <button onClick={transfer} disabled={!DAO}>Transfer</button>
+        <button onClick={mint} disabled={!DAO}>Mint</button>
+      </Container>
+    );
 };
 
 const Container = styled.div`
