@@ -67,7 +67,7 @@ export const ViewDAO = () => {
         );
         await sendAndConfirmInstructions(wallet, connection, instructions);
     }
-
+    console.log(addr)
     useEffect(() => {
         if (!DAO)
             fetchDAO();
@@ -89,8 +89,8 @@ export const ViewDAO = () => {
             <VoteText>no : {proposal.noVotes / 10 ** DAO.communityMint.decimals}</VoteText>
           </VoteTextRow>
           <VoteBar
-            yes = {(proposal.voteTotal * 100) / proposal.voteCount}
-            no = {100 - ((proposal.voteTotal * 100) / proposal.voteCount)}
+            yes = {(proposal.yesVotesl * 100) / (proposal.yesVotes + proposal.noVotes)}
+            no = {100 - ((proposal.noVotes * 100) / (proposal.yesVotes + proposal.noVotes))}
           />
           {proposal.state == 'Voting'
             ? <VoteRow>

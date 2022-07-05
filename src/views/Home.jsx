@@ -10,9 +10,12 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 import { getPDA, sendAndConfirmInstructions } from '../web3/utils.js';
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
+import { useHistory } from "react-router-dom";
+
 export const Home = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
+  const history = useHistory();
   const [contract, setContract] = useState(null)
   // const [imageUrl, setImageUrl] = useState(uploadImg);
   const [image, setImage] = useState(null);
@@ -25,30 +28,9 @@ export const Home = () => {
 
   const Submit = async(e, name) => {
 	// TODO Using Math.random as a name because I can't be bothered to type a unique one each time
-	const { realmPDA, tx } = await daoStep1(wallet, connection, "Name " + Math.random());
-	console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58())
-	/*
-    console.log("Submitted")
-    try {
-      // Unsafe, would need to get signature & check it 
-      Axios.post("/dao/new", {fields})
-      .then(async (res) =>{
-        let addr = await create(fields.name, fields.symbol, res.data.contract);
-        console.log("Created contract", res.data);
-        Axios.post("/dao/update", {fields: {addr}, id: res.data.contract})
-        .then(async (res) =>
-        {
-          console.log("Updated contract", res.data)
-          findContracts();//TODO
-        })
-      })
-    }
-    catch(err)
-    {
-      console.log("This happenned", err)
-    }
-	*/
-  
+    const { realmPDA, tx } = await daoStep1(wallet, connection, "Name " + Math.random());
+    console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58())
+    history.push("/dao/" + realmPDA.publicKey.toBase58());
   };
 
   return (
