@@ -20,7 +20,10 @@ import {
 } from '@solana/spl-governance/lib/governance/accounts';
 import { CastVoteArgs, CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateProposalArgs, CreateRealmArgs, DepositGoverningTokensArgs, Vote, VoteKind, YesNoVote, VoteChoice } from '@solana/spl-governance/lib/governance/instructions';
 import { createMintInstructions, getAssociatedTokenAccountPDA, mintToInstructions } from './token.js';
+
+// Fixes for missing functions in borsh
 import { deserializeBorsh } from '@solana/spl-governance/lib/tools/borsh';
+export * from './borsh';
 
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 export const GOVERNANCE_PROGRAM_ID = new PublicKey('GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw');
@@ -98,6 +101,14 @@ export const getVoteRecordPDA = async (proposal: PublicKey, tokenOwnerRecord: Pu
 		'governance',
 		proposal.toBuffer(),
 		tokenOwnerRecord.toBuffer(),
+	],
+	programId
+);
+
+export const getRealmConfigPDA = async (realm: PublicKey, programId: PublicKey) => getPDA(
+	[
+		'realm-config',
+		realm.toBuffer(),
 	],
 	programId
 );
@@ -191,7 +202,7 @@ const createCreateMintGovernanceInstruction = async (
 	const args = new CreateMintGovernanceArgs({
 		config: new GovernanceConfig({
 			voteThresholdPercentage: new VoteThresholdPercentage({ value: 60 }),
-			minCommunityTokensToCreateProposal: new BN('18446744073709551615'),
+			minCommunityTokensToCreateProposal: new BN(1),
 			minInstructionHoldUpTime: 0,
 			maxVotingTime: 259200,
 			minCouncilTokensToCreateProposal: new BN(1),
@@ -396,6 +407,7 @@ export const createSubmitProposalInstruction = async (
 	const governancePDA = await getMintGovernancePDA(realmAddress, communityMint, programId);
 	const proposalPDA = await getProposalPDA(governancePDA.publicKey, communityMint, proposalIndex, programId);
 	const proposalOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, payer, programId);
+	const realmConfigPDA = await getRealmConfigPDA(realmAddress, programId);
 	const args = new CreateProposalArgs({
 		name: proposalName,
 		descriptionLink: proposalDescription,
@@ -448,6 +460,11 @@ export const createSubmitProposalInstruction = async (
 		},
 		{
 			pubkey: SYSTEM_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: realmConfigPDA.publicKey,
 			isWritable: false,
 			isSigner: false,
 		},

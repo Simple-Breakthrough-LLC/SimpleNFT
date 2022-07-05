@@ -10,19 +10,34 @@ import { getDAO } from '../web3/governance.ts';
 //   https://github.com/facebook/create-react-app/pull/12021
 import { ProposalState } from '@solana/spl-governance/lib/governance/accounts';
 import { VoteKind } from '@solana/spl-governance/lib/governance/instructions';
-import { createSubmitProposalInstructions } from "../web3";
+import { createSubmitProposalInstructions, GOVERNANCE_PROGRAM_ID, sendAndConfirmInstructions } from "../web3";
 
 export const ViewDAO = () => {
     const { addr } = useParams();
+    const realm = new PublicKey(addr);
     const { connection } = useConnection();
     const wallet = useWallet();
     const [DAO, setDAO] = useState(null);
 
     console.log(DAO);
-    if (DAO)
-        console.log(DAO.communityMint.address.toBase58());
 
-    const newProposal = () => {
+    const newProposal = async () => {
+        const x = Math.random();
+        const name = 'Proposal name ' + Math.random();
+        const description = 'Proposal description ' + Math.random();
+        const instructions = await createSubmitProposalInstructions(
+            {
+                payer: wallet.publicKey,
+                realm,
+                communityMint: DAO.communityMint.address,
+            },
+            0,// Math.floor(Math.random() * 1000000), // TODO should really track which proposal indices have corresponding accounts and use the smallest one that doesn't
+            name,
+            description,
+            GOVERNANCE_PROGRAM_ID
+        );
+        console.log(instructions);
+        await sendAndConfirmInstructions(wallet, connection, instructions);
     }
 
     const formatProposal = (proposal, communityMint) => {
@@ -45,7 +60,7 @@ export const ViewDAO = () => {
     }
 
     const fetchDAO = async () => {
-        const dao = await getDAO(connection, new PublicKey(addr));
+        const dao = await getDAO(connection, realm);
         dao.proposals = dao.proposals.map(formatProposal);
         setDAO(dao);
     }
