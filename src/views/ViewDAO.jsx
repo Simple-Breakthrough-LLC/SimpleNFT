@@ -25,13 +25,16 @@ export const ViewDAO = () => {
         const x = Math.random();
         const name = 'Proposal name ' + Math.random();
         const description = 'Proposal description ' + Math.random();
+        // TODO Honestly kinda terrible way of getting the index
+        // TODO Should really load the proposals one index at a time rather than using getProgramAccounts
+        const proposalIndex = DAO.proposals.length;
         const instructions = await createSubmitProposalInstructions(
             {
                 payer: wallet.publicKey,
                 realm,
                 communityMint: DAO.communityMint.address,
             },
-            0,// Math.floor(Math.random() * 1000000), // TODO should really track which proposal indices have corresponding accounts and use the smallest one that doesn't
+            proposalIndex,
             name,
             description,
             GOVERNANCE_PROGRAM_ID
@@ -78,7 +81,7 @@ export const ViewDAO = () => {
 
     const proposalHTML = (proposal) => (
       <ProposalCard key={proposal.account}>
-        <ProposalTitle> {proposal.name} </ProposalTitle>
+        <ProposalTitle> {proposal.name} ({ProposalState[proposal.state]}) </ProposalTitle>
         <ProposalText numberOfLines={1}>{proposal.description}</ProposalText>
         <VoteCol>
           <VoteTextRow>
@@ -89,7 +92,7 @@ export const ViewDAO = () => {
             yes = {(proposal.voteTotal * 100) / proposal.voteCount}
             no = {100 - ((proposal.voteTotal * 100) / proposal.voteCount)}
           />
-          {proposal.state == 'Voting'
+          {proposal.state == ProposalState.Voting
             ? <VoteRow>
               <VoteButton color="green">YES</VoteButton>
               <VoteButton color="red">NO</VoteButton>

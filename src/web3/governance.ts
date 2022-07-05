@@ -18,7 +18,7 @@ import {
 	VoteType,
 	TokenOwnerRecord
 } from '@solana/spl-governance/lib/governance/accounts';
-import { CastVoteArgs, CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateProposalArgs, CreateRealmArgs, DepositGoverningTokensArgs, Vote, VoteKind, YesNoVote, VoteChoice } from '@solana/spl-governance/lib/governance/instructions';
+import { CastVoteArgs, CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateProposalArgs, CreateRealmArgs, DepositGoverningTokensArgs, Vote, VoteKind, YesNoVote, VoteChoice, AddSignatoryArgs, SignOffProposalArgs } from '@solana/spl-governance/lib/governance/instructions';
 import { createMintInstructions, getAssociatedTokenAccountPDA, mintToInstructions } from './token.js';
 
 // Fixes for missing functions in borsh
@@ -109,6 +109,15 @@ export const getRealmConfigPDA = async (realm: PublicKey, programId: PublicKey) 
 	[
 		'realm-config',
 		realm.toBuffer(),
+	],
+	programId
+);
+
+export const getSignatoryRecordPDA = async (proposal: PublicKey, signatory: PublicKey, programId: PublicKey) => getPDA(
+	[
+		'governance',
+		proposal.toBuffer(),
+		signatory.toBuffer(),
 	],
 	programId
 );
@@ -476,6 +485,115 @@ export const createSubmitProposalInstruction = async (
 	});
 }
 
+export const createAddSignatoryInstruction = async (
+	programId: PublicKey,
+	realmAddress: PublicKey,
+	communityMint: PublicKey,
+	governanceAuthority: PublicKey,
+	proposalIndex: number,
+	payer: PublicKey,
+) => {
+	const governancePDA = await getMintGovernancePDA(realmAddress, communityMint, programId);
+	const proposalPDA = await getProposalPDA(governancePDA.publicKey, communityMint, proposalIndex, programId);
+	const tokenOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, payer, programId);
+	const signatoryRecordPDA = await getSignatoryRecordPDA(proposalPDA.publicKey, payer, programId);
+	const args = new AddSignatoryArgs({ signatory: payer });
+	const data = Buffer.from(
+		serialize(
+			getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION),
+			args,
+		)
+	);
+	const keys = [
+		{
+			pubkey: proposalPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: tokenOwnerRecordPDA.publicKey,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: governanceAuthority,
+			isWritable: false,
+			isSigner: true,
+		},
+		{
+			pubkey: signatoryRecordPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: payer,
+			isWritable: true,
+			isSigner: true,
+		},
+		{
+			pubkey: SYSTEM_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+	];
+	return new TransactionInstruction({
+		keys,
+		programId,
+		data,
+	});
+}
+
+export const createSignOffProposalInstruction = async (
+	programId: PublicKey,
+	realmAddress: PublicKey,
+	communityMint: PublicKey,
+	proposalIndex: number,
+	payer: PublicKey,
+) => {
+	const governancePDA = await getMintGovernancePDA(realmAddress, communityMint, programId);
+	const proposalPDA = await getProposalPDA(governancePDA.publicKey, communityMint, proposalIndex, programId);
+	const signatoryRecordPDA = await getSignatoryRecordPDA(proposalPDA.publicKey, payer, programId);
+	const args = new SignOffProposalArgs();
+	const data = Buffer.from(
+		serialize(
+			getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION),
+			args,
+		)
+	);
+	const keys = [
+		{
+			pubkey: realmAddress,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: governancePDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: proposalPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: payer,
+			isWritable: false,
+			isSigner: true,
+		},
+		{
+			pubkey: signatoryRecordPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+	];
+	return new TransactionInstruction({
+		keys,
+		programId,
+		data,
+	});
+}
+
 /*
 export const createCastVoteInstruction = async (
 	programId: PublicKey,
@@ -645,7 +763,21 @@ export const createSubmitProposalInstructions = async (
 			proposalDescription,
 			payer,
 		),
-		// AddSignatory ?
+		await createAddSignatoryInstruction(
+			programId,
+			realm,
+			communityMint,
+			payer,
+			proposalIndex,
+			payer,
+		),
+		await createSignOffProposalInstruction(
+			programId,
+			realm,
+			communityMint,
+			proposalIndex,
+			payer,
+		),
 	];
 }
 
