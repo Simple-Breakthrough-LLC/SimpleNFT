@@ -594,20 +594,20 @@ export const createSignOffProposalInstruction = async (
 	});
 }
 
-/*
 export const createCastVoteInstruction = async (
 	programId: PublicKey,
 	realmAddress: PublicKey,
 	communityMint: PublicKey,
 	proposalAddress: PublicKey,
+	proposalOwnerRecordAddress: PublicKey,
 	governanceAuthority: PublicKey,
 	approve: boolean,
 	payer: PublicKey,
 ) => {
 	const governancePDA = await getMintGovernancePDA(realmAddress, communityMint, programId);
 	const tokenOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, payer, programId);
-	const proposalOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, proposalOwner, programId);
 	const voteRecordPDA = await getVoteRecordPDA(proposalAddress, tokenOwnerRecordPDA.publicKey, programId);
+	const realmConfigPDA = await getRealmConfigPDA(realmAddress, programId);
 	const args = new CastVoteArgs({
 		vote: new Vote({
 			voteType: approve ? VoteKind.Approve : VoteKind.Deny,
@@ -639,7 +639,7 @@ export const createCastVoteInstruction = async (
 			isSigner: false,
 		},
 		{
-			pubkey: proposalOwnerRecordPDA.publicKey,
+			pubkey: proposalOwnerRecordAddress,
 			isWritable: true,
 			isSigner: false,
 		},
@@ -673,6 +673,11 @@ export const createCastVoteInstruction = async (
 			isWritable: false,
 			isSigner: false,
 		},
+		{
+			pubkey: realmConfigPDA.publicKey,
+			isWritable: false,
+			isSigner: false,
+		},
 	];
 	return new TransactionInstruction({
 		keys,
@@ -680,7 +685,6 @@ export const createCastVoteInstruction = async (
 		data,
 	});
 }
-*/
 
 export const createBasicDAOInstructions = async (
 	connection: any,
@@ -716,7 +720,6 @@ export const createBasicDAOInstructions = async (
 			payer,
 		),
 	];
-	console.log(instructions);
 	return instructions;
 }
 
@@ -781,26 +784,25 @@ export const createSubmitProposalInstructions = async (
 	];
 }
 
-/*
 export const createCastVoteInstructions = async (
 	accounts: any,
 	approve: boolean,
 	programId: PublicKey,
 ) => {
-	const { payer, realm, communityMint, proposal } = accounts;
+	const { payer, realm, communityMint, proposal, proposalOwnerRecord } = accounts;
 	return [
 		await createCastVoteInstruction(
 			programId,
 			realm,
 			communityMint,
 			proposal,
+			proposalOwnerRecord,
 			payer,
 			approve,
 			payer,
 		)
 	];
 }
-*/
 
 
 

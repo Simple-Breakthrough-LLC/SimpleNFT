@@ -10,7 +10,7 @@ import { getDAO } from '../web3/governance.ts';
 //   https://github.com/facebook/create-react-app/pull/12021
 import { ProposalState } from '@solana/spl-governance/lib/governance/accounts';
 import { VoteKind } from '@solana/spl-governance/lib/governance/instructions';
-import { createSubmitProposalInstructions, GOVERNANCE_PROGRAM_ID, sendAndConfirmInstructions } from "../web3";
+import { createCastVoteInstructions, createSubmitProposalInstructions, GOVERNANCE_PROGRAM_ID, sendAndConfirmInstructions } from "../web3";
 
 export const ViewDAO = () => {
     const { addr } = useParams();
@@ -22,7 +22,6 @@ export const ViewDAO = () => {
     console.log(DAO);
 
     const newProposal = async () => {
-        const x = Math.random();
         const name = 'Proposal name ' + Math.random();
         const description = 'Proposal description ' + Math.random();
         // TODO Honestly kinda terrible way of getting the index
@@ -39,11 +38,25 @@ export const ViewDAO = () => {
             description,
             GOVERNANCE_PROGRAM_ID
         );
-        console.log(instructions);
         await sendAndConfirmInstructions(wallet, connection, instructions);
     }
 
-    const formatProposal = (proposal, communityMint) => {
+    const vote = async (proposal, approve) => {
+        const instructions = await createCastVoteInstructions(
+            {
+                payer: wallet.publicKey,
+                realm,
+                communityMint: DAO.communityMint.address,
+                proposal: proposal.account,
+                proposalOwnerRecord: proposal.tokenOwnerRecord,
+            },
+            approve,
+            GOVERNANCE_PROGRAM_ID,
+        );
+        await sendAndConfirmInstructions(wallet, connection, instructions);
+    }
+
+    const formatProposal = (proposal) => {
         let yesVotes = 0;
         let noVotes = 0;
         for (const vote of proposal.votes) {
@@ -57,6 +70,7 @@ export const ViewDAO = () => {
             name: proposal.data.name,
             description: proposal.data.descriptionLink,
             state: proposal.data.state,
+            tokenOwnerRecord: proposal.data.tokenOwnerRecord,
             yesVotes,
             noVotes,
         }
@@ -94,8 +108,8 @@ export const ViewDAO = () => {
           />
           {proposal.state == ProposalState.Voting
             ? <VoteRow>
-              <VoteButton color="green">YES</VoteButton>
-              <VoteButton color="red">NO</VoteButton>
+              <VoteButton color="green" onClick={() => vote(proposal, true)}>YES</VoteButton>
+              <VoteButton color="red" onClick={() => vote(proposal, false)}>NO</VoteButton>
             </VoteRow>
             : null
           }
