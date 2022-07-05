@@ -1,22 +1,11 @@
-import Axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { createBasicDAOInstructions, daoStep1 } from '../web3/governance';
+import { helpers_createDAO } from '../web3/governance';
 import styled from "styled-components";
-
-import { ViewContract } from "./ViewDAO";
-
-import { Keypair, PublicKey } from '@solana/web3.js';
-import { getPDA, sendAndConfirmInstructions } from '../web3/utils.js';
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export const Home = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
-  const [contract, setContract] = useState(null)
-  // const [imageUrl, setImageUrl] = useState(uploadImg);
-  const [image, setImage] = useState(null);
-  // const fileInput = useRef(null);
   const [fields, setFormFields] = useState({
     name: "",
     symbol: "",
@@ -24,31 +13,8 @@ export const Home = () => {
   });
 
   const Submit = async(e, name) => {
-	// TODO Using Math.random as a name because I can't be bothered to type a unique one each time
-	const { realmPDA, tx } = await daoStep1(wallet, connection, "Name " + Math.random());
-	console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58())
-	/*
-    console.log("Submitted")
-    try {
-      // Unsafe, would need to get signature & check it 
-      Axios.post("/dao/new", {fields})
-      .then(async (res) =>{
-        let addr = await create(fields.name, fields.symbol, res.data.contract);
-        console.log("Created contract", res.data);
-        Axios.post("/dao/update", {fields: {addr}, id: res.data.contract})
-        .then(async (res) =>
-        {
-          console.log("Updated contract", res.data)
-          findContracts();//TODO
-        })
-      })
-    }
-    catch(err)
-    {
-      console.log("This happenned", err)
-    }
-	*/
-  
+    const { realmPDA, tx } = await helpers_createDAO(wallet, connection, fields.name);
+    console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58());
   };
 
   return (

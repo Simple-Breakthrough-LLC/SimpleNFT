@@ -5,7 +5,7 @@ import BN from 'bn.js';
 import { serialize } from 'borsh';
 // We need to strategically avoid certain functions in the spl governance library because of this issue:
 //   https://github.com/facebook/create-react-app/pull/12021
-import { getGovernanceSchema } from '@solana/spl-governance/lib/governance/serialisation';
+import { getGovernanceSchema, GOVERNANCE_SCHEMA } from '@solana/spl-governance/lib/governance/serialisation';
 import {
 	GovernanceConfig,
 	MintMaxVoteWeightSource,
@@ -14,15 +14,17 @@ import {
 	GovernanceAccountType,
 	Realm,
 	Proposal,
-	VoteRecord
+	VoteRecord,
+	VoteType,
+	TokenOwnerRecord
 } from '@solana/spl-governance/lib/governance/accounts';
-import { CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateRealmArgs } from '@solana/spl-governance/lib/governance/instructions';
-import { createMintInstructions, mintToInstructions } from './token.js';
+import { CastVoteArgs, CreateMintGovernanceArgs, CreateNativeTreasuryArgs, CreateProposalArgs, CreateRealmArgs, DepositGoverningTokensArgs, Vote, VoteKind, YesNoVote, VoteChoice } from '@solana/spl-governance/lib/governance/instructions';
+import { createMintInstructions, getAssociatedTokenAccountPDA, mintToInstructions } from './token.js';
 import { deserializeBorsh } from '@solana/spl-governance/lib/tools/borsh';
 
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
-const GOVERNANCE_PROGRAM_ID = new PublicKey('GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw');
-const GOVERNANCE_PROGRAM_VERSION = 2;
+export const GOVERNANCE_PROGRAM_ID = new PublicKey('GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw');
+export const GOVERNANCE_PROGRAM_VERSION = 2;
 
 export const getCommunityTokenHoldingPDA = async (realm: PublicKey, communityMint: PublicKey, programId: PublicKey) => getPDA(
 	[
@@ -73,6 +75,29 @@ export const getNativeTreasuryPDA = async (governance: PublicKey, programId: Pub
 	[
 		'native-treasury',
 		governance.toBuffer(),
+	],
+	programId
+);
+
+export const getProposalPDA = async (governance: PublicKey, communityMint: PublicKey, index: number, programId: PublicKey) => {
+	const proposalIndexBuffer = Buffer.alloc(4);
+	proposalIndexBuffer.writeInt32LE(index, 0);
+	return getPDA(
+		[
+			'governance',
+			governance.toBuffer(),
+			communityMint.toBuffer(),
+			proposalIndexBuffer,
+		],
+		programId
+	);
+}
+
+export const getVoteRecordPDA = async (proposal: PublicKey, tokenOwnerRecord: PublicKey, programId: PublicKey) => getPDA(
+	[
+		'governance',
+		proposal.toBuffer(),
+		tokenOwnerRecord.toBuffer(),
 	],
 	programId
 );
@@ -287,6 +312,241 @@ const createNativeTreasuryInstruction = async (
 	})
 }
 
+const createDepositGoverningTokensInstruction = async (
+	programId: PublicKey,
+	realmAddress: PublicKey,
+	communityMint: PublicKey,
+	payerTokenAccount: PublicKey,
+	amount: BN,
+	payer: PublicKey,
+) => {
+	const communityTokenHoldingPDA = await getCommunityTokenHoldingPDA(realmAddress, communityMint, programId);
+	const tokenOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, payer, programId);
+	const args = new DepositGoverningTokensArgs({ amount });
+	const data = Buffer.from(
+		serialize(
+			getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION),
+			args,
+		)
+	);
+	const keys = [
+		{
+			pubkey: realmAddress,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: communityTokenHoldingPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: payerTokenAccount,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: payer,
+			isWritable: true,
+			isSigner: true,
+		},
+		{
+			pubkey: payer,
+			isWritable: false,
+			isSigner: true,
+		},
+		{
+			pubkey: tokenOwnerRecordPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: payer,
+			isWritable: true,
+			isSigner: true,
+		},
+		{
+			pubkey: SYSTEM_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: TOKEN_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+	];
+	return new TransactionInstruction({
+		keys,
+		programId,
+		data,
+	});
+}
+
+export const createSubmitProposalInstruction = async (
+	programId: PublicKey,
+	realmAddress: PublicKey,
+	communityMint: PublicKey,
+	governanceAuthority: PublicKey,
+	proposalIndex: number,
+	proposalName: string,
+	proposalDescription: string,
+	payer: PublicKey,
+) => {
+	const governancePDA = await getMintGovernancePDA(realmAddress, communityMint, programId);
+	const proposalPDA = await getProposalPDA(governancePDA.publicKey, communityMint, proposalIndex, programId);
+	const proposalOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, payer, programId);
+	const args = new CreateProposalArgs({
+		name: proposalName,
+		descriptionLink: proposalDescription,
+		governingTokenMint: communityMint,
+		voteType: VoteType.SINGLE_CHOICE,
+		options: ["Approve"],
+		useDenyOption: true,
+	});
+	const data = Buffer.from(
+		serialize(
+			getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION),
+			args,
+		)
+	);
+	const keys = [
+		{
+			pubkey: realmAddress,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: proposalPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: governancePDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: proposalOwnerRecordPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: communityMint,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: governanceAuthority,
+			isWritable: false,
+			isSigner: true,
+		},
+		{
+			pubkey: payer,
+			isWritable: true,
+			isSigner: true,
+		},
+		{
+			pubkey: SYSTEM_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+	];
+	return new TransactionInstruction({
+		keys,
+		programId,
+		data,
+	});
+}
+
+/*
+export const createCastVoteInstruction = async (
+	programId: PublicKey,
+	realmAddress: PublicKey,
+	communityMint: PublicKey,
+	proposalAddress: PublicKey,
+	governanceAuthority: PublicKey,
+	approve: boolean,
+	payer: PublicKey,
+) => {
+	const governancePDA = await getMintGovernancePDA(realmAddress, communityMint, programId);
+	const tokenOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, payer, programId);
+	const proposalOwnerRecordPDA = await getTokenOwnerRecordPDA(realmAddress, communityMint, proposalOwner, programId);
+	const voteRecordPDA = await getVoteRecordPDA(proposalAddress, tokenOwnerRecordPDA.publicKey, programId);
+	const args = new CastVoteArgs({
+		vote: new Vote({
+			voteType: approve ? VoteKind.Approve : VoteKind.Deny,
+			approveChoices: [ new VoteChoice({ rank: 0, weightPercentage: 100 }) ],
+			deny: undefined,
+		}),
+		yesNoVote: undefined,
+	});
+	const data = Buffer.from(
+		serialize(
+			getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION),
+			args,
+		)
+	);
+	const keys = [
+		{
+			pubkey: realmAddress,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: governancePDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: proposalAddress,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: proposalOwnerRecordPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: tokenOwnerRecordPDA.publicKey,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: governanceAuthority,
+			isWritable: false,
+			isSigner: true,
+		},
+		{
+			pubkey: voteRecordPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		},
+		{
+			pubkey: communityMint,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
+			pubkey: payer,
+			isWritable: false,
+			isSigner: true,
+		},
+		{
+			pubkey: SYSTEM_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+	];
+	return new TransactionInstruction({
+		keys,
+		programId,
+		data,
+	});
+}
+*/
+
 export const createBasicDAOInstructions = async (
 	connection: any,
 	accounts: any,
@@ -325,16 +585,78 @@ export const createBasicDAOInstructions = async (
 	return instructions;
 }
 
-// export const createDepositCommunityTokenInstructions
+export const createDepositCommunityTokenInstructions = async (
+	accounts: { payer: PublicKey, realm: PublicKey, communityMint: PublicKey },
+	amount: BN | string,
+	programId: PublicKey,
+) => {
+	amount = new BN(amount);
+	const { payer, realm, communityMint } = accounts;
+	const payerTokenAccount = await getAssociatedTokenAccountPDA(communityMint, payer);
+
+	const instructions = [
+		await createDepositGoverningTokensInstruction(
+			programId,
+			realm,
+			communityMint,
+			payerTokenAccount.publicKey,
+			amount,
+			payer,
+		),
+	];
+	return instructions;
+}
+
 // export const createWithdrawCommunityTokenInstructions
-// export const createSubmitProposalInstructions
-// export const createCastVoteInstruction
+
+export const createSubmitProposalInstructions = async (
+	accounts: any,
+	proposalIndex: number,
+	proposalName: string,
+	proposalDescription: string,
+	programId: PublicKey,
+) => {
+	const { payer, realm, communityMint } = accounts;
+	return [
+		await createSubmitProposalInstruction(
+			programId,
+			realm,
+			communityMint,
+			payer,
+			proposalIndex,
+			proposalName,
+			proposalDescription,
+			payer,
+		),
+		// AddSignatory ?
+	];
+}
+
+/*
+export const createCastVoteInstructions = async (
+	accounts: any,
+	approve: boolean,
+	programId: PublicKey,
+) => {
+	const { payer, realm, communityMint, proposal } = accounts;
+	return [
+		await createCastVoteInstruction(
+			programId,
+			realm,
+			communityMint,
+			proposal,
+			payer,
+			approve,
+			payer,
+		)
+	];
+}
+*/
 
 
 
 
-
-export const daoStep1 = async (wallet: any, connection: any, name: string) => {
+export const helpers_createDAO = async (wallet: any, connection: any, name: string) => {
 	const communityMint = Keypair.generate();
 	const realmPDA = await getRealmPDA(name, GOVERNANCE_PROGRAM_ID);
 	const governancePDA = await getMintGovernancePDA(realmPDA.publicKey, communityMint.publicKey, GOVERNANCE_PROGRAM_ID);
@@ -363,6 +685,44 @@ export const daoStep2 = async (wallet: any, connection: any) => {
 
 const accountTypeFilter = (type : GovernanceAccountType) => {
 	return (account : any) => account.account.data[0] === type;
+}
+
+export const getCommunityMintInfo = async (connection: any, realm: PublicKey) => {
+	const GOVERNANCE_SCHEMA = getGovernanceSchema(GOVERNANCE_PROGRAM_VERSION);
+	const realmInfo = await connection.getParsedAccountInfo(realm);
+	const realmData : Realm = deserializeBorsh(
+		GOVERNANCE_SCHEMA,
+		Realm,
+		Buffer.from(realmInfo.value.data),
+	);
+	const mintInfo = await connection.getParsedAccountInfo(realmData.communityMint);
+	return {
+		publicKey: realmData.communityMint,
+		decimals: mintInfo.value.data.parsed.info.decimals
+	};
+}
+
+export const getTokenOwnerRecordInfo = async (connection: any, realm: PublicKey, communityMint: PublicKey, tokenOwner: PublicKey) => {
+	const tokenOwnerRecordPDA = await getTokenOwnerRecordPDA(realm, communityMint, tokenOwner, GOVERNANCE_PROGRAM_ID);
+	const info = await connection.getParsedAccountInfo(tokenOwnerRecordPDA.publicKey);
+	if (!info.value)
+		return {
+			governingTokenDepositAmount: 0,
+			unrelinquishedVotesCount: 0,
+			totalVotesCount: 0,
+			outstandingProposalCount: 0,
+		};
+	const data = deserializeBorsh(
+		GOVERNANCE_SCHEMA,
+		TokenOwnerRecord,
+		Buffer.from(info.value.data),
+	);
+	return {
+		governingTokenDepositAmount: data.governingTokenDepositAmount,
+		unrelinquishedVotesCount: data.unrelinquishedVotesCount,
+		totalVotesCount: data.totalVotesCount,
+		outstandingProposalCount: data.outstandingProposalCount,
+	};
 }
 
 export const getDAO = async (connection: any, realm: PublicKey) => {

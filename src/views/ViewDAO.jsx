@@ -6,20 +6,24 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 
 import { getDAO } from '../web3/governance.ts';
-import { mintToInstructions, transferInstructions } from '../web3/token.js';
-import { sendAndConfirmInstructions } from '../web3/utils.js';
 // We need to strategically avoid certain functions in the spl governance library because of this issue:
 //   https://github.com/facebook/create-react-app/pull/12021
 import { ProposalState } from '@solana/spl-governance/lib/governance/accounts';
 import { VoteKind } from '@solana/spl-governance/lib/governance/instructions';
+import { createSubmitProposalInstructions } from "../web3";
 
 export const ViewDAO = () => {
     const { addr } = useParams();
     const { connection } = useConnection();
     const wallet = useWallet();
     const [DAO, setDAO] = useState(null);
-    const [amount, setAmount] = useState(10);
-    const [recipient, setRecipient] = useState('Aui657vkmeVDGX9GzE7j2B1RhZpbpQN6E9UeRCzqKvCd');
+
+    console.log(DAO);
+    if (DAO)
+        console.log(DAO.communityMint.address.toBase58());
+
+    const newProposal = () => {
+    }
 
     const formatProposal = (proposal, communityMint) => {
         let yesVotes = 0;
@@ -44,28 +48,6 @@ export const ViewDAO = () => {
         const dao = await getDAO(connection, new PublicKey(addr));
         dao.proposals = dao.proposals.map(formatProposal);
         setDAO(dao);
-    }
-
-    const mint = async () => {
-        const instructions = await mintToInstructions(
-            connection,
-            wallet.publicKey,
-            DAO.realmData.communityMint,
-            Number(amount),
-            new PublicKey(recipient),
-        );
-        await sendAndConfirmInstructions(wallet, connection, instructions);
-    }
-
-    const transfer = async () => {
-        const instructions = await transferInstructions(
-            connection,
-            wallet.publicKey,
-            DAO.realmData.communityMint,
-            Number(amount),
-            new PublicKey(recipient),
-        );
-        await sendAndConfirmInstructions(wallet, connection, instructions);
     }
 
     useEffect(() => {
@@ -105,10 +87,12 @@ export const ViewDAO = () => {
 
     return (
       <Container>
-        <DAOName>{DAO.name}</DAOName>
+        <DAOName>{DAO.realmData.name}</DAOName>
         <TopRow>
-          <TopButton> Transfer tokens</TopButton>
-          <TopButton> New Proposal </TopButton>
+          <a href={"/tokens/" + addr}>
+            <TopButton> Transfer tokens</TopButton>
+          </a>
+          <TopButton onClick={newProposal}> New Proposal </TopButton>
         </TopRow>
         <RowName> Open </RowName>
         <ProposalRow>
@@ -119,11 +103,6 @@ export const ViewDAO = () => {
         <ProposalRow>
           {closedProposals.map(proposalHTML)}
         </ProposalRow>
-        Transfer tokens:
-        Amount: 10
-        To: Aui657vkmeVDGX9GzE7j2B1RhZpbpQN6E9UeRCzqKvCd
-        <button onClick={transfer} disabled={!DAO}>Transfer</button>
-        <button onClick={mint} disabled={!DAO}>Mint</button>
       </Container>
     );
 };
