@@ -11,6 +11,7 @@ import { getDAO } from '../web3/governance.ts';
 import { ProposalState } from '@solana/spl-governance/lib/governance/accounts';
 import { VoteKind } from '@solana/spl-governance/lib/governance/instructions';
 import { createCastVoteInstructions, createSubmitProposalInstructions, GOVERNANCE_PROGRAM_ID, sendAndConfirmInstructions } from "../web3";
+import { ManageTokens } from "./ManageTokens";
 
 export const ViewDAO = () => {
     const { addr } = useParams();
@@ -18,6 +19,7 @@ export const ViewDAO = () => {
     const { connection } = useConnection();
     const wallet = useWallet();
     const [DAO, setDAO] = useState(null);
+    const [viewTokens, setViewTokens] = useState(false);
 
     console.log(DAO);
 
@@ -82,6 +84,10 @@ export const ViewDAO = () => {
         setDAO(dao);
     }
 
+    const votesToInt = (votes) =>
+    {
+      return votes / 10 ** DAO.communityMint.decimals
+    }
     useEffect(() => {
         if (!DAO)
             fetchDAO();
@@ -99,12 +105,12 @@ export const ViewDAO = () => {
         <ProposalText numberOfLines={1}>{proposal.description}</ProposalText>
         <VoteCol>
           <VoteTextRow>
-            <VoteText>yes : {proposal.yesVotes / 10 ** DAO.communityMint.decimals}</VoteText>
-            <VoteText>no : {proposal.noVotes / 10 ** DAO.communityMint.decimals}</VoteText>
+            <VoteText>yes: {votesToInt(proposal.yesVotes)}</VoteText>
+            <VoteText>no : {votesToInt(proposal.noVotes)}</VoteText>
           </VoteTextRow>
           <VoteBar
-            yes = {(proposal.voteTotal * 100) / proposal.voteCount}
-            no = {100 - ((proposal.voteTotal * 100) / proposal.voteCount)}
+            yes ={(votesToInt(proposal.yesVotes) * 100) / (votesToInt(proposal.yesVotes) + votesToInt(proposal.noVotes))}
+            no = {(votesToInt(proposal.noVotes) * 100) / (votesToInt(proposal.yesVotes) + votesToInt(proposal.noVotes))}
           />
           {proposal.state == ProposalState.Voting
             ? <VoteRow>
@@ -118,12 +124,12 @@ export const ViewDAO = () => {
     );
 
     return (
+      <>
+        { viewTokens && <ManageTokens setView={setViewTokens} addr={addr}/> }
       <Container>
         <DAOName>{DAO.realmData.name}</DAOName>
         <TopRow>
-          <a href={"/tokens/" + addr}>
-            <TopButton> Transfer tokens</TopButton>
-          </a>
+            <TopButton onClick={() => setViewTokens(true)}> Transfer tokens</TopButton>
           <TopButton onClick={newProposal}> New Proposal </TopButton>
         </TopRow>
         <RowName> Open </RowName>
@@ -136,6 +142,7 @@ export const ViewDAO = () => {
           {closedProposals.map(proposalHTML)}
         </ProposalRow>
       </Container>
+      </>
     );
 };
 
@@ -223,13 +230,18 @@ const VoteBar = styled.div`
   background: white;
   border: 2px solid grey;
   border-radius: 8px;
-  height:11px;
+  height:14px;
   padding:0px 1px;
-  &::after {
+  &::before {
     border-radius: 8px;
     background: green;
     width: ${props =>props.yes}%;
     content:"";
+  }
+  &:after {
+    background: ${props => props.no ? "red" : "white"};
+    width: ${props => props.no}%;
+    content: "";
   }
 `
 const TimeLeft = styled.div`
