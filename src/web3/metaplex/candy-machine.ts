@@ -13,7 +13,7 @@ import {
   Transaction,
   SYSVAR_SLOT_HASHES_PUBKEY,
 } from '@solana/web3.js';
-import { sendTransactions, SequenceType } from './connection';
+import { sendTransactions, SequenceType } from './connection.tsx';
 
 import {
   CIVIC,
@@ -21,7 +21,7 @@ import {
   getNetworkExpire,
   getNetworkToken,
   SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
-} from './utils';
+} from './utils.ts';
 
 export const CANDY_MACHINE_PROGRAM = new anchor.web3.PublicKey(
   'cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ',

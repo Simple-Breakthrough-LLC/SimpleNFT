@@ -55,44 +55,41 @@ export const Home = () => {
   //   }
   // };
 
-  const findContracts = async() =>{
+  const findContracts = async () => {
     let data = await Axios.get("/user/get/" + wallet.publicKey.toBase58())
     console.log(data.data)
     if (data.data.length)
       setContract(data.data[0]);
   }
 
-  const Submit = async(e, name) => {
+  const Submit = async (e, name) => {
     // Await server image & data creation
     try {
 
-      Axios.post("/contract/new", {fields, user: wallet.publicKey.toBase58()})
-      .then(async (res) =>{
-        let addr = await create(fields.name, fields.symbol, res.data.contract);
-        console.log("Created contract", res.data);
-        Axios.post("/contract/update", {fields: {addr}, user: wallet.publicKey.toBase58(), id: res.data.contract})
-        .then(async (res) =>
-        {
-          console.log("Updated contract", res.data)
-          findContracts();//TODO
+      Axios.post("/contract/new", { fields, user: wallet.publicKey.toBase58() })
+        .then(async (res) => {
+          let addr = await create(fields.name, fields.symbol, res.data.contract);
+          console.log("Created contract", res.data);
+          Axios.post("/contract/update", { fields: { addr }, user: wallet.publicKey.toBase58(), id: res.data.contract })
+            .then(async (res) => {
+              console.log("Updated contract", res.data)
+              findContracts();//TODO
+            })
         })
-      })
     }
-    catch(err)
-    {
+    catch (err) {
       console.log("This happenned", err)
     }
-  
+
   };
 
-  useEffect(() =>
-  {
+  useEffect(() => {
     console.log("Hi")
     findContracts();
   }, [])
 
   if (contract)
-    return (<ViewContract contract={contract}/>)
+    return (<ViewContract contract={contract} />)
   return (
 
     <Container>
@@ -124,14 +121,14 @@ export const Home = () => {
               </SymbolInput>
             </FlexRow>
             <PayoutRecipientInput>
-                <InputText>Image</InputText>
-                <Input
-                  type="text"
-                  onChange={(e) =>
-                    setFormFields({ ...fields, image: e.target.value })
-                  }
-                />
-              </PayoutRecipientInput>
+              <InputText>Image</InputText>
+              <Input
+                type="text"
+                onChange={(e) =>
+                  setFormFields({ ...fields, image: e.target.value })
+                }
+              />
+            </PayoutRecipientInput>
             <DescriptionInput>
               <InputText>Description</InputText>
               <InputArea
