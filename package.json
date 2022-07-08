@@ -36,11 +36,11 @@
   },
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "start": "node server/server.js",
-    "client": "react-scripts start",
+    "client": "react-app-rewired start",
     "server": "nodemon --watch server server/server.js",
-    "build": "CI= GENERATE_SOURCEMAP=false react-scripts build",
-    "test": "react-scripts test",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -59,6 +59,7 @@
     ]
   },
   "devDependencies": {
-    "cross-env": "^7.0.2"
+    "cross-env": "^7.0.2",
+    "react-app-rewired": "^2.2.1"
   }
 }
