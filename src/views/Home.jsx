@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { helpers_createDAO } from '../web3/governance';
 import styled from "styled-components";
+import { useHistory } from "react-router-dom"
 
 export const Home = () => {
   const { connection } = useConnection();
   const wallet = useWallet();
+  const history = useHistory();
   const [fields, setFormFields] = useState({
     name: "",
     symbol: "",
@@ -15,6 +17,7 @@ export const Home = () => {
   const Submit = async(e, name) => {
     const { realmPDA, tx } = await helpers_createDAO(wallet, connection, fields.name);
     console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58());
+    history.push("/dao/" + + realmPDA.publicKey.toBase58());
   };
 
   return (
