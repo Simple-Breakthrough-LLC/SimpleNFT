@@ -17,7 +17,7 @@ export const Home = () => {
   const Submit = async(e, name) => {
     const { realmPDA, tx } = await helpers_createDAO(wallet, connection, fields.name);
     console.log('Now redirect to /dao/' + realmPDA.publicKey.toBase58());
-    history.push("/dao/" + + realmPDA.publicKey.toBase58());
+    history.push("/dao/" + realmPDA.publicKey.toBase58());
   };
 
   return (
