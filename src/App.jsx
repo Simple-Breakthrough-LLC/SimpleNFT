@@ -8,7 +8,6 @@ import { WalletDialogProvider } from '@solana/wallet-adapter-material-ui';
 
 import BaseView from "./components/BaseView";
 import { Home } from "./views/Home";
-import { ViewDAO } from "./views/ViewDAO";
 
 const App = () => {
   return (
@@ -18,9 +17,6 @@ const App = () => {
           <Switch>
             <Route path="/" exact>
               <Home />
-            </Route>
-            <Route path="/dao/:addr" exact>
-              <ViewDAO />
             </Route>
           </Switch>
         </Router>

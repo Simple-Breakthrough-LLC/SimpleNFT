@@ -56,7 +56,7 @@ const getAndMaybeInitializeATA = async (connection, payer, mint, wallet) => {
 }
 
 export const mintToInstructions = async (connection, payer, mint, amount, recipient) => {
-	const { ata, instructions } = getAndMaybeInitializeATA(connection, payer, mint, recipient);
+	const { ata, instructions } = await getAndMaybeInitializeATA(connection, payer, mint, recipient);
 	instructions.push(
 		createMintToInstruction(
 			mint,
@@ -69,11 +69,11 @@ export const mintToInstructions = async (connection, payer, mint, amount, recipi
 }
 
 export const transferInstructions = async (connection, payer, mint, amount, recipient) => {
-	const senderATA = getAssociatedTokenAccountPDA(mint, payer);
-	const { ata, instructions } = getAndMaybeInitializeATA(connection, payer, mint, recipient);
+	const senderATA = await getAssociatedTokenAccountPDA(mint, payer);
+	const { ata, instructions } = await getAndMaybeInitializeATA(connection, payer, mint, recipient);
 	instructions.push(
 		createTransferInstruction(
-			senderATA,
+			senderATA.publicKey,
 			ata,
 			payer,
 			amount,
