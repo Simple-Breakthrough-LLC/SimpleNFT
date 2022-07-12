@@ -1,6 +1,5 @@
 # SimpleNFT DAO Branch
 
-Make sure you have a PhantomWallet
+Currently deployed at CxA23eN7Dn524LFuJJ5FGLn3keE6o6XFxnWhrFuzbTCJ
 
-/ to see create page
-/dao to see dao page
+view at https://explorer.solana.com/address/CxA23eN7Dn524LFuJJ5FGLn3keE6o6XFxnWhrFuzbTCJ?cluster=devnet
