@@ -9,6 +9,7 @@
 #define TOKEN_ACC_SIZE 165
 
 extern uint64_t sol_get_rent_sysvar(void *ret);
+
 typedef struct
 {
     uint64_t lamports_per_byte_year;
@@ -71,9 +72,9 @@ static uint64_t get_rent_exempt_minimum(uint64_t account_size)
 }
 
 // 
-uint64_t createAccount(SolAccountInfo *creator, SolAccountInfo *newAccount, SolAccountInfo *program)
+uint64_t createAccount(SolAccountInfo *creator, SolAccountInfo *newAccount, SolAccountInfo *program, SolAccountInfo *systemProgram)
 {
-    SolAccountInfo *accounts[2] = {creator, newAccount};
+    SolAccountInfo accounts[] = {*creator, *newAccount};
     SolAccountMeta instructionArgs[] = {{creator->key, true, true}, {newAccount->key, true, true}};
     uint8_t data[4 + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(SolPubkey)];
     int dataOffset = 0;
@@ -88,20 +89,20 @@ uint64_t createAccount(SolAccountInfo *creator, SolAccountInfo *newAccount, SolA
     *(SolPubkey *)(data + dataOffset) = *(program->key); //owner
 
     const SolInstruction createAccInstruction = {
-            SYS_KEY, 
+            systemProgram->key,
             instructionArgs, SOL_ARRAY_SIZE(instructionArgs),
             data, SOL_ARRAY_SIZE(data)
         };
     
-    sol_invoke(&createAccInstruction, accounts, SOL_ARRAY_SIZE(accounts));
+    return sol_invoke(&createAccInstruction, accounts, SOL_ARRAY_SIZE(accounts));
 }
 
 //                       tokenProgramg  acount to initalize as mint , decimals        , this program
 uint64_t createToken( SolAccountInfo *MintAccount, uint8_t decimals, SolAccountInfo *authority, SolAccountInfo *tokenProgram) 
 {
-    uint8_t decimals;
-    SolAccountInfo *accounts[2] = {MintAccount, authority, tokenProgram};
-    SolAccountMeta instructionArgs[] = {{MintAccount, true, false}, {RENT_SYSVAR}};
+    SolPubkey rent = *(SolPubkey *)RENT_SYSVAR;
+    SolAccountInfo accounts[3] = {*MintAccount, *authority, *tokenProgram};
+    SolAccountMeta instructionArgs[] = {{MintAccount->key, true, false}, {&rent}};
     uint8_t data[4 + sizeof(uint8_t) + sizeof(SolPubkey) + sizeof(SolPubkey)];
     int dataOffset = 0;
 
@@ -119,14 +120,14 @@ uint64_t createToken( SolAccountInfo *MintAccount, uint8_t decimals, SolAccountI
             data, SOL_ARRAY_SIZE(data)
         };
 
-    sol_invoke(&createTokenInstruction, accounts, SOL_ARRAY_SIZE(accounts));
+    return sol_invoke(&createTokenInstruction, accounts, SOL_ARRAY_SIZE(accounts));
 }
 
 uint64_t createPDA_FromTokenAccount(SolAccountInfo *mintAccount, SolAccountInfo *program, SolAccountInfo *PDA, SolAccountInfo *system,
                                     uint32_t initialSupply, uint8_t percentTaken_FromTansfers) 
 {
     uint8_t bumpSeed;
-    const SolSignerSeed seeds[] = {{mintAccount->key, sizeof(mintAccount->key)}};
+    const SolSignerSeed seeds[] = {{(uint8_t *)(mintAccount->key), sizeof(mintAccount->key)}};
     const SolSignerSeeds signers_seeds[] = {{seeds, SOL_ARRAY_SIZE(seeds)}};
 
 // ?
@@ -134,11 +135,11 @@ uint64_t createPDA_FromTokenAccount(SolAccountInfo *mintAccount, SolAccountInfo 
 
     if (SUCCESS != sol_create_program_address(
                     seeds, SOL_ARRAY_SIZE(seeds), 
-                    &program, PDA));
+                    program->key, PDA->key))
         return ERROR_INVALID_INSTRUCTION_DATA;
  // 
-    SolAccountInfo *accounts[2] = {system, PDA};
-    SolAccountMeta instructionArgs[] = {{PDA, true, true}};
+    SolAccountInfo accounts[] = {*system, *PDA};
+    SolAccountMeta instructionArgs[] = {{PDA->key, true, true}};
     uint8_t data[sizeof(SYS_ALLOCATE_TAG)+ 
                 sizeof(initialSupply) + 
                 sizeof(percentTaken_FromTansfers)];
@@ -148,17 +149,17 @@ uint64_t createPDA_FromTokenAccount(SolAccountInfo *mintAccount, SolAccountInfo 
     *(uint64_t *)(data + sizeof(uint16_t) + sizeof(uint64_t)) = percentTaken_FromTansfers;
 
     const SolInstruction allocateInstruction = {
-                SYS_KEY, 
+                system->key, 
                 instructionArgs, SOL_ARRAY_SIZE(instructionArgs),
                 data, SOL_ARRAY_SIZE(data)
                 };
 
-    sol_invoke_signed(&allocateInstruction, accounts, SOL_ARRAY_SIZE(accounts), signers_seeds, SOL_ARRAY_SIZE(signers_seeds));
+    return sol_invoke_signed(&allocateInstruction, accounts, SOL_ARRAY_SIZE(accounts), signers_seeds, SOL_ARRAY_SIZE(signers_seeds));
 }
 
 uint64_t mintSupply_ToCreator(SolAccountInfo *MintAccount, SolAccountInfo *CreatorAccount, SolAccountInfo *tokenProgram, SolAccountInfo *PDA)
 {   
-    SolAccountInfo *accounts[] = {MintAccount, CreatorAccount, tokenProgram};
+    SolAccountInfo accounts[] = {*MintAccount, *CreatorAccount, *tokenProgram};
     SolAccountMeta instructionArgs[] = {{MintAccount->key}, {CreatorAccount->key}, {PDA->key}};
     uint8_t data[sizeof(TOKEN_MINT_TO) + sizeof(uint64_t)];
 
@@ -170,7 +171,7 @@ uint64_t mintSupply_ToCreator(SolAccountInfo *MintAccount, SolAccountInfo *Creat
                 instructionArgs, SOL_ARRAY_SIZE(instructionArgs),
                 data, SOL_ARRAY_SIZE(data)
                 };
-    sol_invoke(&allocateInstruction, accounts, SOL_ARRAY_SIZE(accounts));
+    return sol_invoke(&allocateInstruction, accounts, SOL_ARRAY_SIZE(accounts));
 }
 
 typedef struct t_data
@@ -195,10 +196,10 @@ uint64_t createNew_ReflectionToken (const uint8_t *input)
     SolAccountInfo *newAccount = &accounts[4];
     SolAccountInfo *PDAAccount = &accounts[4];
 
-    createAccount(creatorAccount, newAccount, program);
+    createAccount(creatorAccount, newAccount, program, systemProgram);
     createToken(newAccount, 6, program, tokenProgram);
     createPDA_FromTokenAccount(newAccount, program, PDAAccount, systemProgram, data.supply, data.percentFromTransfers);
-    mintSupply_ToCreator(newAccount, creatorAccount, tokenProgram, PDAAccount);
+    return mintSupply_ToCreator(newAccount, creatorAccount, tokenProgram, PDAAccount);
 }
 
 extern uint64_t entrypoint(const uint8_t *input)
@@ -227,4 +228,5 @@ extern uint64_t entrypoint(const uint8_t *input)
 
     }
     else return ERROR_INVALID_INSTRUCTION_DATA;
+    return 1;
 }
