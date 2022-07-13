@@ -3,9 +3,10 @@ import { getPDA } from './utils.js';
 import { serialize } from 'borsh';
 
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { getAssociatedTokenAccountPDA, SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID } from './token.js';
 
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
-export const REFLECTION_PROGRAM_ID = new PublicKey('CxA23eN7Dn524LFuJJ5FGLn3keE6o6XFxnWhrFuzbTCJ');
+export const REFLECTION_PROGRAM_ID = new PublicKey('28cwbHshz1Rb3sH5p4DiRr6Rdq9dJtBNUBAAkCnAbJrR');
 
 export const getReflectionTokenPDA = async (tokenMint : PublicKey) => getPDA(
 	[
@@ -44,8 +45,9 @@ export const createNewReflectionTokenInstruction = async (
 	payer: PublicKey,
 ) => {
 	const reflectionPDA = await getReflectionTokenPDA(mint);
+	const tokenAccountPDA = await getAssociatedTokenAccountPDA(mint, payer);
 	const args = new CreateReflectionTokenArgs({
-		supply: 1000,
+		supply: 1000e6,
 		transferFeePercent: 2,
 	});
 	const data = Buffer.from(
@@ -66,6 +68,11 @@ export const createNewReflectionTokenInstruction = async (
 			isSigner: false,
 		},
 		{
+			pubkey: SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
+			isWritable: false,
+			isSigner: false,
+		},
+		{
 			pubkey: payer,
 			isWritable: true,
 			isSigner: true,
@@ -80,6 +87,11 @@ export const createNewReflectionTokenInstruction = async (
 			isWritable: true,
 			isSigner: false,
 		},
+		{
+			pubkey: tokenAccountPDA.publicKey,
+			isWritable: true,
+			isSigner: false,
+		}
 	];
 	return new TransactionInstruction({
 		keys,

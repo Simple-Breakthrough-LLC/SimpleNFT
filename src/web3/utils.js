@@ -1,5 +1,4 @@
 const web3 = require('@solana/web3.js');
-const nacl = require('tweetnacl');
 
 export const getPDA = async (seeds, programId) => {
 	const pda = await web3.PublicKey.findProgramAddress(

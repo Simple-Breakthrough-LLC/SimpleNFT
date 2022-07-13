@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { sendAndConfirmInstructions } from '../web3/utils.js';
 import { createNewReflectionTokenInstruction } from '../web3/reflection';
 
