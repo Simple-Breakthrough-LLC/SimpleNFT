@@ -6,14 +6,16 @@ import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { getAssociatedTokenAccountPDA, SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID } from './token.js';
 
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
-export const REFLECTION_PROGRAM_ID = new PublicKey('28cwbHshz1Rb3sH5p4DiRr6Rdq9dJtBNUBAAkCnAbJrR');
 
-export const getReflectionTokenPDA = async (tokenMint : PublicKey) => getPDA(
+
+export const getReflectionTokenPDA = async (tokenMint : PublicKey,  id : PublicKey) => getPDA(
 	[
 		tokenMint.toBuffer(),
 	],
-	REFLECTION_PROGRAM_ID
+	id
 );
+
+
 
 class CreateReflectionTokenArgs {
 	instruction: number;
@@ -43,8 +45,9 @@ const REFLECTION_SCHEMA = new Map([
 export const createNewReflectionTokenInstruction = async (
 	mint: PublicKey,
 	payer: PublicKey,
+	id: PublicKey
 ) => {
-	const reflectionPDA = await getReflectionTokenPDA(mint);
+	const reflectionPDA = await getReflectionTokenPDA(mint, id);
 	const tokenAccountPDA = await getAssociatedTokenAccountPDA(mint, payer);
 	const args = new CreateReflectionTokenArgs({
 		supply: 1000e6,
@@ -95,7 +98,7 @@ export const createNewReflectionTokenInstruction = async (
 	];
 	return new TransactionInstruction({
 		keys,
-		programId: REFLECTION_PROGRAM_ID,
+		programId: id,
 		data,
 	});
 }

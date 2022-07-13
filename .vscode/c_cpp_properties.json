@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "/home/usr/.local/share/solana/install/releases/1.10.26/solana-release/bin/sdk/bpf/c/inc"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

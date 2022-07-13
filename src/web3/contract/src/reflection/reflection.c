@@ -160,7 +160,7 @@ uint64_t createPDA_FromTokenAccount(SolAccountInfo *mintAccount, SolAccountInfo 
 uint64_t mintSupply_ToCreator(SolAccountInfo *MintAccount, SolAccountInfo *CreatorAccount, SolAccountInfo *tokenProgram, SolAccountInfo *PDA)
 {   
     SolAccountInfo accounts[] = {*MintAccount, *CreatorAccount, *tokenProgram};
-    SolAccountMeta instructionArgs[] = {{MintAccount->key}, {CreatorAccount->key}, {PDA->key}};
+    SolAccountMeta instructionArgs[] = {{MintAccount->key, false, true}, {CreatorAccount->key, false, true}, {PDA->key, true, false}};
     uint8_t data[sizeof(TOKEN_MINT_TO) + sizeof(uint64_t)];
 
     *(uint16_t *)data = TOKEN_MINT_TO;
