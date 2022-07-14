@@ -71,30 +71,71 @@ static uint64_t get_rent_exempt_minimum(uint64_t account_size)
     return min + fraction;
 }
 
-// 
-uint64_t createAccount(SolAccountInfo *creator, SolAccountInfo *newAccount, SolAccountInfo *program, SolAccountInfo *systemProgram)
+void print_number(uint8_t n) {
+    uint8_t A[3];
+
+    A[0] = n / 100 + '0';
+    // sol_log_((char *)&A, 1);
+    n %= 100;
+    A[1] = n / 10 + '0';
+    // sol_log_((char *)&A, 1);
+    n %= 10;
+    A[2] = n + '0';
+    sol_log_((char *)&A, 3);
+}
+
+void log_data(char *arg, int size)
 {
-    SolAccountInfo accounts[] = {*creator, *newAccount};
-    SolAccountMeta instructionArgs[] = {{creator->key, true, true}, {newAccount->key, true, true}};
+    for (int i = 0; i < size; i++)
+    {
+        print_number(arg[i]);
+    }
+}
+
+void crash_program()
+{
+    char *a;
+
+    sol_log_(a, 123);
+}
+
+
+void createAccount(SolAccountInfo *payer, SolAccountInfo *tokenProgram, SolAccountInfo *mint, const SolPubkey *program, SolAccountInfo *systemProgram)
+{
+    SolAccountInfo accounts[2] = {*payer, *mint};
+    SolAccountMeta instructionArgs[2] = {{payer->key, true, true}, {mint->key, true, true}};
     uint8_t data[4 + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(SolPubkey)];
     int dataOffset = 0;
 
-
-    *(uint16_t *)(data + dataOffset) = SYS_CREATE_TAG;
-    dataOffset += sizeof(uint16_t);
+    *(uint8_t *)(data + dataOffset) = SYS_CREATE_TAG;
+    dataOffset += sizeof(uint32_t);
+    // dataOffset += 4;
+    // *(uint64_t *)(data + dataOffset) = (uint64_t)1000000000000; //Lamports ?
     *(uint64_t *)(data + dataOffset) = get_rent_exempt_minimum(TOKEN_ACC_SIZE); //Lamports ?
     dataOffset += sizeof(uint64_t);
+    // *(uint64_t *)(data + dataOffset) = 0; //Token account size
     *(uint64_t *)(data + dataOffset) = TOKEN_ACC_SIZE; //Token account size
     dataOffset += sizeof(uint64_t);
-    *(SolPubkey *)(data + dataOffset) = *(program->key); //owner
+    *(SolPubkey *)(data + dataOffset) = *tokenProgram->key; //owner
 
+    
     const SolInstruction createAccInstruction = {
             systemProgram->key,
             instructionArgs, SOL_ARRAY_SIZE(instructionArgs),
             data, SOL_ARRAY_SIZE(data)
         };
-    
-    return sol_invoke(&createAccInstruction, accounts, SOL_ARRAY_SIZE(accounts));
+
+    // sol_log_pubkey(payer->key);
+    // sol_log_pubkey(mint->key);
+    // sol_log_pubkey(program);
+    // sol_log_pubkey(systemProgram->key);
+    // log_data((char *)data, SOL_ARRAY_SIZE(data));
+    // uint64_t i = get_rent_exempt_minimum(TOKEN_ACC_SIZE);
+    // log_data((char *)&i, 8);
+    // log_data((char *)SOL_ARRAY_SIZE(data), 1);
+    // crash_program();
+    sol_invoke(&createAccInstruction, accounts, SOL_ARRAY_SIZE(accounts));
+    // return 0;
 }
 
 //                       tokenProgramg  acount to initalize as mint , decimals        , this program
@@ -108,8 +149,8 @@ uint64_t createToken( SolAccountInfo *MintAccount, uint8_t decimals, SolAccountI
 
     
     decimals = 6;// Pass this in data
-    *(uint16_t *)(data + dataOffset) = TOKEN_INIT_MINT_TAG;
-    dataOffset += sizeof(uint16_t);
+    *(uint32_t *)(data + dataOffset) = TOKEN_INIT_MINT_TAG;
+    dataOffset += sizeof(uint32_t);
     *(SolPubkey*)(data + dataOffset) = *(MintAccount->key);
     dataOffset += sizeof(SolPubkey);
     *(SolPubkey*)(data + dataOffset) = *(authority->key);
@@ -180,36 +221,55 @@ typedef struct t_data
     uint64_t percentFromTransfers;
 }               Data;
 
-uint64_t createNew_ReflectionToken (const uint8_t *input)
+uint64_t createNew_ReflectionToken (SolParameters *params, SolAccountInfo accounts[7])
 {
-    SolAccountInfo accounts[5];
-    SolParameters params = (SolParameters){.ka = accounts};
     Data data;
-    if (!sol_deserialize(input, &params, SOL_ARRAY_SIZE(accounts)))
-        return ERROR_INVALID_ARGUMENT;
 
-    data = *(Data *)params.data;
-    SolAccountInfo *program = &accounts[0];
-    SolAccountInfo *systemProgram = &accounts[1];
-    SolAccountInfo *tokenProgram = &accounts[2];
-    SolAccountInfo *creatorAccount = &accounts[3];
-    SolAccountInfo *newAccount = &accounts[4];
-    SolAccountInfo *PDAAccount = &accounts[4];
 
-    createAccount(creatorAccount, newAccount, program, systemProgram);
-    createToken(newAccount, 6, program, tokenProgram);
-    createPDA_FromTokenAccount(newAccount, program, PDAAccount, systemProgram, data.supply, data.percentFromTransfers);
-    return mintSupply_ToCreator(newAccount, creatorAccount, tokenProgram, PDAAccount);
+    data = *(Data *)(params->data);
+    const SolPubkey *program = params->program_id;
+    SolAccountInfo *systemProgram = &accounts[0];
+    SolAccountInfo *tokenProgram = &accounts[1];
+    SolAccountInfo *assTokenProgram = &accounts[2];
+    SolAccountInfo *payer = &accounts[3];
+    SolAccountInfo *mint = &accounts[4];
+    SolAccountInfo *PDAAccount = &accounts[5];
+    SolAccountInfo *assTokenAccount = &accounts[6];
+
+    // sol_log_pubkey(program);
+    // sol_log_pubkey(systemProgram->key);
+    // sol_log_pubkey(tokenProgram->key);
+    // sol_log_pubkey(assTokenProgram->key);
+    // sol_log_pubkey(payer->key);
+    // sol_log_pubkey(mint->key);
+    // sol_log_pubkey(PDAAccount->key);
+    // sol_log_pubkey(assTokenAccount->key);
+    // char A = SOL_ARRAY_SIZE(&accounts) + '0';
+    // sol_log_(&A, 1);
+    createAccount(payer, tokenProgram, mint, program, systemProgram);
+    // createToken(newAccount, 6, program, tokenProgram);
+    // createPDA_FromTokenAccount(newAccount, program, PDAAccount, systemProgram, data.supply, data.percentFromTransfers);
+    // return mintSupply_ToCreator(newAccount, creatorAccount, tokenProgram, PDAAccount);
+    return 0;
 }
 
 extern uint64_t entrypoint(const uint8_t *input)
 {
-    const char tag = input[0];
+    char tag = -1;
 
+    SolAccountInfo accounts[7];
+    SolParameters params = (SolParameters){.ka = accounts};
+    
+    if (!sol_deserialize(input, &params, SOL_ARRAY_SIZE(accounts)))
+        return ERROR_INVALID_ARGUMENT;
+
+    tag = params.data[0];
+    params.data += 1;
+    // sol_log_((char)&tag + '0', 1);
     if (tag == 0)
     {
-
-        createNew_ReflectionToken(input);
+        sol_log_("This is the 0 tag", 18);
+        createNew_ReflectionToken(&params, accounts);
         // DATA : supply, % taken from transfer, 
         // ACCOUNTS : program, sys , token, creator
         // TODO LATER (can be done in JS but prefer not to
@@ -227,6 +287,7 @@ extern uint64_t entrypoint(const uint8_t *input)
     {
 
     }
-    else return ERROR_INVALID_INSTRUCTION_DATA;
-    return 1;
+    else 
+        return ERROR_INVALID_INSTRUCTION_DATA;
+    return 0;
 }
